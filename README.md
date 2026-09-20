@@ -146,7 +146,14 @@ Chi tiết quy ước: xem [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md).
 
 | Repo | Vai trò |
 |---|---|
-| `ailusion-journey-fe` | Next.js — giao diện người dùng |
-| `ailusion-journey-be` | Node.js — API, dữ liệu, nghiệp vụ |
-| `ailusion-journey-llm` | Python — suy luận LLM |
+| [`ailusion-journey-fe`](https://github.com/thuphamfintechtai/ailusion-journey-fe) | Next.js — giao diện người dùng |
+| [`ailusion-journey-be`](https://github.com/thuphamfintechtai/ailusion-journey-be) | Node.js — API, dữ liệu, nghiệp vụ |
+| [`ailusion-journey-llm`](https://github.com/thuphamfintechtai/ailusion-journey-llm) | Python — suy luận LLM |
+| [`ailusion-journey-data-collector`](https://github.com/thuphamfintechtai/ailusion-journey-data-collector) | Airflow — DAG thu thập dữ liệu du lịch (điểm đến, giá, thời tiết) đổ về kho dữ liệu cho BE dùng |
 | `ailusion-journey-mcp` | **repo này** — lớp MCP cho LLM gọi tool |
+
+Luồng dữ liệu:
+
+```
+data-collector (Airflow)  ->  kho dữ liệu  ->  be (API)  ->  mcp (tool)  ->  llm / client
+```
