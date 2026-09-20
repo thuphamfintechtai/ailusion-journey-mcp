@@ -216,3 +216,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- project ---
+.env*
+!.env.example
+venv/
+.venv
+.DS_Store
+.vscode
+.idea
+.pytest_cache
+.coverage
+logs/
+output/
+plans/
+.cursor/
+.claude/settings.local.json
