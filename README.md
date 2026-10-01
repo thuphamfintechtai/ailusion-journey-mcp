@@ -31,6 +31,15 @@ pytest
 MCP Inspector là công cụ chính thức để xem và gọi thử tool/resource mà không
 cần client thật. Cần Node.js (dùng `npx`, không phải cài gì thêm).
 
+Cách nhanh nhất — một lệnh chạy cả server lẫn Inspector web, Inspector đã
+cấu hình sẵn `http://localhost:8000/mcp` và tự mở trình duyệt, Ctrl+C tắt cả hai:
+
+```bash
+bash scripts_test/dev.sh
+```
+
+Muốn chạy từng phần thì làm theo các bước dưới.
+
 ### 1. Chạy server
 
 ```bash
@@ -89,10 +98,10 @@ Mở URL đó, rồi trong giao diện chọn:
 Bấm **Connect**. Tab `Tools` / `Resources` / `Prompts` sẽ hiện những gì
 `auto_register` đã nạp.
 
-Inspector dùng 2 port: `6274` (web) và `6277` (proxy). Dọn khi cần:
+Inspector dùng port `6274` (web) và `6275` (sandbox; bản cũ dùng `6277` làm proxy). Dọn khi cần:
 
 ```bash
-lsof -ti:6274,6277 | xargs -r kill -9
+lsof -ti:6274,6275,6277 | xargs kill -9
 ```
 
 ### 4. Test bằng chính Claude Code
@@ -148,7 +157,7 @@ src/
 ├── models/              Pydantic schema dùng chung cho nhiều tool
 └── utils/               logging, error_handler, response_utils
 tests/                   Smoke test + test SerpApiClient
-scripts_test/            Script thử tay (check_serpapi_keys.py)
+scripts_test/            Script thử tay (dev.sh, check_serpapi_keys.py)
 docs/SERPAPI.md          Dữ liệu SerpApi: dashboard, quota, engine, field
 ```
 
