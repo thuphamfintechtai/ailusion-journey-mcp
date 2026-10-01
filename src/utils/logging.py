@@ -27,6 +27,10 @@ def setup_logging() -> None:
         force=True,
     )
 
+    # httpx log URL mỗi request ở mức INFO; URL SerpApi chứa `api_key` nên
+    # chỉ để httpx log từ WARNING trở lên, tránh lộ key ra hệ thống log.
+    logging.getLogger("httpx").setLevel(max(log_level, logging.WARNING))
+
     renderer = (
         structlog.dev.ConsoleRenderer(colors=True)
         if settings.log_level.upper() == "DEBUG"

@@ -13,7 +13,7 @@ gọi, rồi uỷ thác việc lấy dữ liệu và tính toán xuống `ailusi
 ```bash
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # sửa BACKEND_BASE_URL, LLM_BASE_URL
+cp .env.example .env          # sửa BACKEND_BASE_URL, LLM_BASE_URL, SERPAPI_API_KEYS
 
 python main.py                # HTTP  -> http://localhost:8000/mcp
 MCP_TRANSPORT=stdio python main.py   # stdio -> dùng trong Claude Code/Desktop
@@ -112,6 +112,25 @@ claude mcp list          # kiểm tra kết nối
 
 Gỡ ra: `claude mcp remove ailusion-journey`.
 
+## SerpApi
+
+Dữ liệu khách sạn, vé máy bay, địa điểm, chỉ đường và review lấy qua
+[SerpApi](https://serpapi.com). Khai báo key trong `.env`:
+
+```env
+SERPAPI_API_KEYS=<key_1>,<key_2>   # nhiều key cách nhau bởi dấu phẩy
+```
+
+Client `src/services/serpapi_client.py` tự chuyển sang key kế tiếp khi key
+hiện tại hết quota hoặc bị từ chối. Kiểm tra quota từng key (miễn phí):
+
+```bash
+python -m scripts_test.check_serpapi_keys
+```
+
+Dashboard có gì, quota tính ra sao, engine nào dùng cho ràng buộc nào và các
+field trả về: xem [docs/SERPAPI.md](docs/SERPAPI.md).
+
 ## Cấu trúc
 
 ```
@@ -124,10 +143,13 @@ src/
 │   └── _template.py     Khuôn mẫu (prefix _ nên không bị đăng ký)
 ├── resources/           Resource MCP (health_check đã có sẵn)
 ├── prompts/             Prompt template
-├── services/            Gọi upstream: http_client.py (backend_client, llm_client)
+├── services/            Gọi upstream: http_client.py (backend_client, llm_client),
+│                        serpapi_client.py (SerpApi, xoay vòng nhiều key)
 ├── models/              Pydantic schema dùng chung cho nhiều tool
 └── utils/               logging, error_handler, response_utils
-tests/                   Smoke test
+tests/                   Smoke test + test SerpApiClient
+scripts_test/            Script thử tay (check_serpapi_keys.py)
+docs/SERPAPI.md          Dữ liệu SerpApi: dashboard, quota, engine, field
 ```
 
 ## Thêm một tool

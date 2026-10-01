@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     llm_base_url: str = Field(default="http://localhost:8001")
     llm_api_key: str = Field(default="")
 
+    # --- SerpApi (dữ liệu Google Hotels / Flights / Maps, TripAdvisor...) ---
+    # Nhiều key cách nhau bởi dấu phẩy. Giữ dạng chuỗi thay vì list[str] vì
+    # pydantic-settings đòi list phải viết dạng JSON trong .env.
+    serpapi_api_keys: str = Field(default="")
+    serpapi_base_url: str = Field(default="https://serpapi.com")
+    serpapi_timeout: int = Field(default=60)
+
     # --- HTTP client ---
     http_timeout: int = Field(default=30)
     http_max_retries: int = Field(default=2)
@@ -39,6 +46,11 @@ class Settings(BaseSettings):
         if v.upper() not in valid_levels:
             raise ValueError(f"Log level must be one of: {valid_levels}")
         return v.upper()
+
+    @property
+    def serpapi_key_list(self) -> list[str]:
+        """Danh sách key SerpApi đã bỏ khoảng trắng và phần tử rỗng."""
+        return [k.strip() for k in self.serpapi_api_keys.split(",") if k.strip()]
 
     @field_validator("mcp_transport")
     @classmethod
