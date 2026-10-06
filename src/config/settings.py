@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     serpapi_api_keys: str = Field(default="")
     serpapi_base_url: str = Field(default="https://serpapi.com")
     serpapi_timeout: int = Field(default=60)
+    # Thời gian (giây) cho key nghỉ sau lỗi, xem docstring serpapi_client.
+    serpapi_rate_limit_cooldown: int = Field(default=900)
+    serpapi_quota_cooldown: int = Field(default=6 * 3600)
+    serpapi_invalid_key_cooldown: int = Field(default=24 * 3600)
 
     # --- HTTP client ---
     http_timeout: int = Field(default=30)
