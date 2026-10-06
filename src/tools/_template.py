@@ -5,16 +5,18 @@ File bắt đầu bằng `_` nên `auto_register` bỏ qua, không đăng ký l�
 Checklist khi viết tool mới
 ---------------------------
 1. Tên file = tên tool  (vd: `build_itinerary.py` -> tool `build_itinerary`)
-2. Hàm đăng ký tên `register_<ten>_tool(mcp)` — đúng prefix `register_`
-3. `description` viết cho LLM đọc: nói rõ tool làm gì, khi nào dùng,
+2. Đặt `title` dạng "English Name (Tên tiếng Việt)" — tên hiển thị;
+   `name` giữ snake_case không dấu.
+3. Hàm đăng ký tên `register_<ten>_tool(mcp)` — đúng prefix `register_`
+4. `description` viết cho LLM đọc: nói rõ tool làm gì, khi nào dùng,
    đơn vị và định dạng của từng tham số. Đây là thứ quyết định model có
    gọi đúng tool hay không.
-4. Mọi tham số dùng `Annotated[..., Field(description=...)]`
-5. Bọc toàn bộ thân hàm trong try/except, log rồi trả
+5. Mọi tham số dùng `Annotated[..., Field(description=...)]`
+6. Bọc toàn bộ thân hàm trong try/except, log rồi trả
    `format_mcp_tool_error_response(...)` — không để exception lọt ra ngoài
-6. Trả `dict`, đi qua `drop_empty()` để bỏ field rỗng cho đỡ tốn token
-7. I/O gọi qua `src/services/`, không gọi httpx thẳng trong tool
-8. Log và ghi chú viết bằng tiếng Việt, không dùng icon/emoji
+7. Trả `dict`, đi qua `drop_empty()` để bỏ field rỗng cho đỡ tốn token
+8. I/O gọi qua `src/services/`, không gọi httpx thẳng trong tool
+9. Log và ghi chú viết bằng tiếng Việt, không dùng icon/emoji
 """
 
 from typing import Annotated, Any
@@ -39,6 +41,7 @@ def register_template_tool(mcp: FastMCP):
 
     @mcp.tool(
         name="template_tool",
+        title="Template Tool (Tool mẫu)",
         description=(
             "Mô tả một câu tool này làm gì.\n\n"
             "Khi nào dùng: ...\n"
