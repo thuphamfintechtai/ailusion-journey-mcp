@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     weatherapi_timeout: int = Field(default=20)
     weatherapi_cache_ttl: int = Field(default=1800)
 
+    # --- Google News RSS ---
+    # Điều khoản feed chỉ cho dùng cá nhân, phi thương mại: đặt false trước khi thương mại hoá.
+    google_news_rss_enabled: bool = Field(default=True)
+
     # --- Tỷ giá (Vietcombank + dự phòng) ---
     # Vietcombank yêu cầu tối đa 1 request / 5 phút; giá trị nhỏ hơn 300 bị nâng lên 300.
     fx_cache_ttl: int = Field(default=1800)

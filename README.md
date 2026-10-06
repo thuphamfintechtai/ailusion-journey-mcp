@@ -196,6 +196,7 @@ Tool không dùng SerpApi (không tốn quota):
 | `mask_pii` | Che SĐT, email, CCCD, số tài khoản, số thẻ, biển số trước khi lưu / ghi log |
 | `source_trust` | Chấm tin cậy domain: loại nguồn, hạng Tranco, tuổi domain (Wayback) |
 | `disaster_alerts` | Cảnh báo thiên tai gần Việt Nam và Biển Đông (GDACS) |
+| `google_news` | Tin mới theo từ khoá (Google News RSS). **Chỉ dùng phi thương mại**, tắt bằng `GOOGLE_NEWS_RSS_ENABLED=false` |
 | `convert_admin_unit` | Đổi phường / quận / tỉnh cũ <-> mới sau sáp nhập 1/7/2025 (thư viện `vietnam-provinces`, offline, GPL-3.0) |
 | `list_admin_units` | Danh mục 34 tỉnh / thành và phường / xã hiện hành, kiểm tra tên có tồn tại |
 | `vn_calendar` | Ngày nghỉ lễ / nghỉ bù, âm lịch, lễ hội theo tỉnh, mức cao điểm. Cách mở rộng: [docs/VN_CALENDAR.md](docs/VN_CALENDAR.md) |
