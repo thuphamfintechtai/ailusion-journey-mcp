@@ -13,6 +13,9 @@ uvicorn>=0.29.0
 typing-extensions>=4.8.0
 # Đổi âm - dương lịch theo thuật toán Hồ Ngọc Đức (UTC+7), không có phụ thuộc
 lunar-vn>=1.4.0,<2.0.0
+# Danh mục đơn vị hành chính chính thức (trước / sau 1/7/2025), chạy offline.
+# Giấy phép GPL-3.0 - đã được chấp nhận, xem src/services/admin_units.py
+vietnam-provinces>=2026.9.0
 
 # Testing dependencies
 pytest>=7.4.0
