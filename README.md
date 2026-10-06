@@ -170,6 +170,18 @@ credit/tháng, code ở `src/services/tavily_client.py`). Mỗi kết quả có
 | `fetch_page` | `extract` | Đọc một trang đã biết URL, lọc đoạn liên quan bằng `focus` |
 | `search_events` | `search` | Concert, festival, pháo hoa có ngày cụ thể |
 
+Tool dùng WeatherAPI.com (cấu hình `WEATHERAPI_API_KEYS`, code ở
+`src/services/weather_client.py`). Tên địa danh được Vietmap đổi ra toạ độ vùng
+trước (bộ tra tên của WeatherAPI hay nhầm địa danh nhỏ ở Việt Nam); tên trùng
+giữa nhiều tỉnh thì tool báo lỗi kèm ứng viên thay vì đoán:
+
+| Tool | Endpoint | Dùng cho |
+|---|---|---|
+| `weather_forecast` | `forecast` / `future` / `history` | Thời tiết theo ngày, cảnh báo theo ngưỡng KTTV (nắng nóng, rét đậm, mưa to, UV) |
+| `air_quality` | `forecast?aqi=yes` | Mức AQI, PM2.5, giờ ô nhiễm nhất, lời khuyên cho trẻ nhỏ / người già |
+| `marine_forecast` | `marine` | Sóng, gió giật, nhiệt độ nước, thuỷ triều cho chuyến đi đảo |
+| `sun_and_sky` | `astronomy` + `forecast` | Giờ mặt trời / mặt trăng, giờ vàng, gợi ý săn mây và ngắm sao |
+
 Tool không dùng SerpApi (không tốn quota):
 
 | Tool | Dùng cho |

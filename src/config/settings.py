@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     # Tin tức đổi nhanh nên cache ngắn hơn Vietmap.
     tavily_cache_ttl: int = Field(default=1800)
 
+    # --- WeatherAPI.com (thời tiết, không khí, biển, thiên văn) ---
+    weatherapi_api_keys: str = Field(default="")
+    weatherapi_base_url: str = Field(default="https://api.weatherapi.com/v1")
+    weatherapi_timeout: int = Field(default=20)
+    weatherapi_cache_ttl: int = Field(default=1800)
+
     # --- Lịch Việt Nam (tool vn_calendar) ---
     # Các nguồn bật, cách nhau dấu phẩy; xem src/services/vn_calendar/sources.py
     calendar_sources: str = Field(default="rules,google_ics,overrides")
@@ -84,6 +90,10 @@ class Settings(BaseSettings):
     @property
     def tavily_key_list(self) -> list[str]:
         return [k.strip() for k in self.tavily_api_keys.split(",") if k.strip()]
+
+    @property
+    def weatherapi_key_list(self) -> list[str]:
+        return [k.strip() for k in self.weatherapi_api_keys.split(",") if k.strip()]
 
     @property
     def serpapi_key_list(self) -> list[str]:

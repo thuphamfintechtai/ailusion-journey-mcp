@@ -12,7 +12,8 @@ Tài liệu: https://maps.vietmap.vn/docs/
 
 import re
 import time
-from collections import OrderedDict
+import unicodedata
+from collections import Counter, OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -30,6 +31,22 @@ _TIEN_TO_REF = ("auto:", "geocode:", "vm:")
 # code trong body JSON nghĩa là key hết hạn mức, đáng để thử key khác
 _CODE_HET_HAN_MUC = {"OVER_DAILY_LIMIT", "OVER_QUERY_LIMIT"}
 _CACHE_TOI_DA = 2000
+_TIEN_TO_HANH_CHINH = ("xa ", "phuong ", "dac khu ", "tinh ", "thanh pho ", "thi tran ", "thi xa ", "quan ", "huyen ")
+_TIEN_TO_HC_CO_DAU = re.compile(r"^(xã|phường|đặc khu|tỉnh|thành phố|tp\.?|thị trấn|thị xã|quận|huyện)\s+")
+
+
+def _ten_co_dau(s: str) -> str:
+    """Chữ thường, chuẩn NFC, gom khoảng trắng — giữ dấu để 'Hạ Long' khác 'Hà Long'."""
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFC", s).lower()).strip()
+
+
+def _bo_tien_to_hc(s: str) -> str:
+    """Bỏ 'xã / phường / đặc khu...' ở đầu, cho cả chuỗi có dấu và không dấu."""
+    s = _TIEN_TO_HC_CO_DAU.sub("", s)
+    for t in _TIEN_TO_HANH_CHINH:
+        if s.startswith(t):
+            return s[len(t):]
+    return s
 
 
 class VietmapError(Exception):
@@ -232,6 +249,104 @@ class VietmapClient:
         if r := chon(await self.search(ten, display_type=1)):
             return r["ref_id"]
         raise VietmapError(f"Không tìm thấy địa điểm '{ten}'", code="NOT_FOUND")
+
+    async def resolve_area(self, ten: str) -> Diem:
+        """Quy tên địa danh ra toạ độ của VÙNG (xã / phường / đặc khu / tỉnh) — dùng cho thời tiết.
+
+        Việt Nam có nhiều đơn vị hành chính trùng tên giữa các tỉnh (xã Hội An - An Giang
+        và phường Hội An - Đà Nẵng; xã Cô Tô - An Giang và đặc khu Cô Tô - Quảng Ninh),
+        còn resolve() thường trả quán trùng tên ("Côn Đảo" -> quán ở TP.HCM). Cách chọn:
+        1. Gõ có dấu thì so có dấu ("Hạ Long" không khớp xã "Hà Long"); khớp trùng hẳn
+           trước, rồi khớp tiền tố ("Hà Giang" -> "Phường Hà Giang 1").
+        2. Phần sau dấu phẩy là gợi ý tỉnh: "Cô Tô, Quảng Ninh".
+        3. Nhiều tỉnh cùng tên: chọn tỉnh có nhiều POI mang tên đó nhất trong kết quả tìm
+           thường (Hội An: 3 POI ở Đà Nẵng, 1 ở An Giang). Hoà -> lỗi AMBIGUOUS kèm ứng viên.
+        4. Không có: thử search/v4 lọc đơn vị hành chính (bắt được "Phường Hạ Long", tên cũ
+           "Cát Bà" -> Cát Hải); rồi POI trùng tên hẳn ("Vịnh Hạ Long"); vẫn không có ->
+           NOT_FOUND để người gọi ghi rõ hơn, thay vì đoán sai tỉnh.
+        """
+        ten = ten.strip()
+        if _TOA_DO.match(ten) or ten.startswith(_TIEN_TO_REF):
+            return await self.resolve(ten)
+        phan = [x.strip() for x in ten.split(",", 1)]
+        goi_y_tinh = bo_dau(phan[1]) if len(phan) > 1 and phan[1] else None
+
+        thuong = await self.autocomplete(ten, display_type=1)
+        hanh_chinh = await self.autocomplete(ten, display_type=1, layers="WARD,DIST,CITY")
+
+        def tinh(r: dict[str, Any]) -> str:
+            return next((b.get("full_name") or "" for b in r.get("boundaries") or [] if b.get("type") == 0), "")
+
+        def hop_tinh(r: dict[str, Any]) -> bool:
+            return goi_y_tinh is None or goi_y_tinh in bo_dau(r.get("display") or "")
+
+        def la_hanh_chinh(r: dict[str, Any]) -> bool:
+            return bo_dau(r.get("name") or "").startswith(_TIEN_TO_HANH_CHINH)
+
+        # Gõ có dấu thì chỉ so có dấu; gõ không dấu mới so bỏ dấu.
+        co_dau = _ten_co_dau(phan[0]) != bo_dau(phan[0])
+        chuan = _ten_co_dau if co_dau else bo_dau
+        q = _bo_tien_to_hc(chuan(phan[0]))
+        # Trùng hẳn; rồi tiền tố ("Phường Hà Giang 1"); rồi đuôi sau gạch ngang ("Lâm Viên-Đà Lạt").
+        cach_khop = (
+            lambda t: t == q,
+            lambda t: t.startswith(q + " "),
+            # bo_dau() đổi '-' thành khoảng trắng nên bản không dấu so đuôi theo khoảng trắng.
+            lambda t: t.endswith("-" + q) or t.endswith("- " + q) or (not co_dau and t.endswith(" " + q)),
+        )
+
+        def tim(nguon: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+            for khop in cach_khop:
+                kq = {
+                    r.get("display") or r["ref_id"]: r
+                    for r in nguon
+                    if la_hanh_chinh(r) and khop(_bo_tien_to_hc(chuan(r.get("name") or ""))) and hop_tinh(r)
+                }
+                if kq:
+                    return kq
+            return {}
+
+        ung_vien = tim([*hanh_chinh, *thuong])
+        tim_dc: list[dict[str, Any]] = []
+        if not ung_vien:
+            # autocomplete hay bỏ sót phường ("Phường Hạ Long"); search/v4 còn hiểu tên cũ
+            # ("Cát Bà" -> "Đặc khu Cát Hải"). Chỉ gọi khi cần để đỡ tốn lượt.
+            tim_dc = await self.search(ten, display_type=1, layers="WARD,DIST,CITY")
+            ung_vien = tim(tim_dc)
+        cac_tinh = {tinh(r) for r in ung_vien.values()}
+
+        chon: dict[str, Any] | None = None
+        if len(cac_tinh) == 1:
+            chon = next(iter(ung_vien.values()))
+        elif len(cac_tinh) > 1:
+            phieu = Counter(tinh(r) for r in thuong if q in _bo_tien_to_hc(chuan(r.get("name") or "")))
+            xep = [t for t, _ in phieu.most_common() if t in cac_tinh]
+            if xep and (len(xep) == 1 or phieu[xep[0]] > phieu[xep[1]]):
+                chon = next(r for r in ung_vien.values() if tinh(r) == xep[0])
+            else:
+                raise VietmapError(
+                    f"'{ten}' trùng tên ở nhiều nơi: " + "; ".join(sorted(ung_vien)) + ". Ghi kèm tỉnh, VD '"
+                    + phan[0] + ", <tỉnh>'",
+                    code="AMBIGUOUS",
+                )
+        else:
+            # Chỉ nhận POI trùng tên hẳn ("Vịnh Hạ Long"), tránh "Hà Giang Store" ở Lâm Đồng.
+            poi = [r for r in thuong if chuan(r.get("name") or "") == chuan(phan[0]) and hop_tinh(r)]
+            hop_le = [r for r in tim_dc if hop_tinh(r)]
+            if poi:
+                chon = poi[0]
+            elif len(hop_le) == 1:
+                # search/v4 chỉ ra đúng một vùng: thường là tên cũ đã đổi ("Cát Bà" -> Cát Hải).
+                chon = hop_le[0]
+        if chon is None:
+            raise VietmapError(
+                f"Không xác định chắc '{ten}' là vùng nào; ghi kèm tỉnh (VD '{phan[0]}, <tỉnh>') hoặc dùng toạ độ",
+                code="NOT_FOUND",
+            )
+        p = await self.place(chon["ref_id"])
+        if p.get("lat") is None:
+            raise VietmapError(f"Không lấy được toạ độ cho '{ten}'", code="NOT_FOUND")
+        return Diem(p["lat"], p["lng"], p.get("display") or chon.get("display") or ten, chon["ref_id"])
 
     async def route(self, diem: list[Diem], vehicle: str, **kw: Any) -> dict[str, Any]:
         return await self.get(
