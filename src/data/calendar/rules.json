@@ -1,0 +1,51 @@
+{
+  "_doc": "Luật lịch Việt Nam lặp lại hằng năm, nguồn 'rules' của vn_calendar. Không ghi ngày theo từng năm ở đây; quyết định riêng của từng năm (nghỉ bù, kéo dài Tết) đặt trong overrides/<năm>.json. Trường của mỗi event: calendar = solar|lunar; month, day = ngày gốc; offset_days = lệch so với ngày gốc (âm = trước); duration_days = số ngày; kind = day_off (nghỉ theo luật) | observance (ngày kỷ niệm, không nghỉ) | festival (lễ hội, gắn tỉnh); from_year / to_year = năm bắt đầu / kết thúc áp dụng; provinces = tên tỉnh/thành sau sáp nhập 1/7/2025; crowd = cao | trung_binh. Season: khoảng ngày lặp lại hằng năm có peak_level 1-3.",
+  "events": [
+    {"id": "tet_duong_lich", "name": "Tết Dương lịch", "calendar": "solar", "month": 1, "day": 1, "kind": "day_off"},
+    {"id": "tet_nguyen_dan", "name": "Tết Nguyên Đán", "calendar": "lunar", "month": 1, "day": 1, "offset_days": -1, "duration_days": 5, "kind": "day_off",
+     "note": "Bộ luật Lao động 2019 cho nghỉ 5 ngày; ngày cụ thể do Chính phủ quyết định mỗi năm, ở đây ước tính giao thừa + mùng 1-4."},
+    {"id": "gio_to_hung_vuong", "name": "Giỗ Tổ Hùng Vương", "calendar": "lunar", "month": 3, "day": 10, "kind": "day_off"},
+    {"id": "giai_phong_mien_nam", "name": "Ngày Giải phóng miền Nam", "calendar": "solar", "month": 4, "day": 30, "kind": "day_off"},
+    {"id": "quoc_te_lao_dong", "name": "Ngày Quốc tế Lao động", "calendar": "solar", "month": 5, "day": 1, "kind": "day_off"},
+    {"id": "quoc_khanh", "name": "Quốc khánh", "calendar": "solar", "month": 9, "day": 2, "kind": "day_off",
+     "note": "Luật cho nghỉ thêm 1 ngày liền trước hoặc sau 2/9, ngày cụ thể do Chính phủ quyết định."},
+    {"id": "ngay_van_hoa_viet_nam", "name": "Ngày Văn hóa Việt Nam", "calendar": "solar", "month": 11, "day": 24, "kind": "day_off", "from_year": 2026},
+
+    {"id": "ong_cong_ong_tao", "name": "Ông Công Ông Táo", "calendar": "lunar", "month": 12, "day": 23, "kind": "observance"},
+    {"id": "ram_thang_gieng", "name": "Rằm tháng Giêng", "calendar": "lunar", "month": 1, "day": 15, "kind": "observance", "note": "Chùa chiền rất đông."},
+    {"id": "quoc_te_phu_nu", "name": "Quốc tế Phụ nữ", "calendar": "solar", "month": 3, "day": 8, "kind": "observance", "note": "Nhà hàng đông, nên đặt chỗ."},
+    {"id": "phat_dan", "name": "Lễ Phật Đản", "calendar": "lunar", "month": 4, "day": 15, "kind": "observance"},
+    {"id": "quoc_te_thieu_nhi", "name": "Quốc tế Thiếu nhi", "calendar": "solar", "month": 6, "day": 1, "kind": "observance", "note": "Khu vui chơi trẻ em đông."},
+    {"id": "vu_lan", "name": "Lễ Vu Lan", "calendar": "lunar", "month": 7, "day": 15, "kind": "observance"},
+    {"id": "trung_thu", "name": "Tết Trung Thu", "calendar": "lunar", "month": 8, "day": 15, "kind": "observance", "note": "Phố lồng đèn (Hà Nội, Hội An, TP.HCM) rất đông buổi tối."},
+    {"id": "phu_nu_viet_nam", "name": "Ngày Phụ nữ Việt Nam", "calendar": "solar", "month": 10, "day": 20, "kind": "observance"},
+    {"id": "giang_sinh", "name": "Giáng sinh", "calendar": "solar", "month": 12, "day": 25, "kind": "observance", "offset_days": -1, "duration_days": 2},
+
+    {"id": "le_hoi_chua_huong", "name": "Lễ hội chùa Hương", "calendar": "lunar", "month": 1, "day": 6, "duration_days": 40, "kind": "festival",
+     "provinces": ["Hà Nội"], "crowd": "cao", "note": "Khai hội mùng 6 tháng Giêng, mùa hội kéo dài tới hết tháng 3 âm lịch; đông nhất tháng Giêng."},
+    {"id": "le_hoi_yen_tu", "name": "Lễ hội Yên Tử", "calendar": "lunar", "month": 1, "day": 10, "duration_days": 40, "kind": "festival",
+     "provinces": ["Quảng Ninh"], "crowd": "cao", "note": "Khai hội mùng 10 tháng Giêng, kéo dài tới hết tháng 3 âm lịch."},
+    {"id": "le_hoi_bai_dinh", "name": "Lễ hội chùa Bái Đính", "calendar": "lunar", "month": 1, "day": 6, "duration_days": 40, "kind": "festival",
+     "provinces": ["Ninh Bình"], "crowd": "cao"},
+    {"id": "hoi_lim", "name": "Hội Lim", "calendar": "lunar", "month": 1, "day": 12, "duration_days": 3, "kind": "festival",
+     "provinces": ["Bắc Ninh"], "crowd": "cao", "note": "Chính hội ngày 13 tháng Giêng."},
+    {"id": "khai_an_den_tran", "name": "Khai ấn đền Trần", "calendar": "lunar", "month": 1, "day": 14, "duration_days": 2, "kind": "festival",
+     "provinces": ["Ninh Bình"], "crowd": "cao", "note": "Đêm 14 rạng sáng 15 tháng Giêng, rất đông."},
+    {"id": "le_hoi_phu_day", "name": "Lễ hội Phủ Dày", "calendar": "lunar", "month": 3, "day": 3, "duration_days": 6, "kind": "festival",
+     "provinces": ["Ninh Bình"], "crowd": "cao"},
+    {"id": "le_hoi_den_hung", "name": "Lễ hội Đền Hùng", "calendar": "lunar", "month": 3, "day": 8, "duration_days": 4, "kind": "festival",
+     "provinces": ["Phú Thọ"], "crowd": "cao", "note": "Chính hội ngày 10 tháng 3 âm lịch."},
+    {"id": "hoi_giong_phu_dong", "name": "Hội Gióng đền Phù Đổng", "calendar": "lunar", "month": 4, "day": 7, "duration_days": 3, "kind": "festival",
+     "provinces": ["Hà Nội"], "crowd": "trung_binh"},
+    {"id": "via_ba_chua_xu", "name": "Lễ hội Vía Bà Chúa Xứ núi Sam", "calendar": "lunar", "month": 4, "day": 23, "duration_days": 5, "kind": "festival",
+     "provinces": ["An Giang"], "crowd": "cao"},
+    {"id": "ok_om_bok", "name": "Lễ hội Ok Om Bok", "calendar": "lunar", "month": 10, "day": 14, "duration_days": 2, "kind": "festival",
+     "provinces": ["Cần Thơ", "Vĩnh Long"], "crowd": "cao", "note": "Có đua ghe ngo."}
+  ],
+  "seasons": [
+    {"id": "cao_diem_he", "name": "Cao điểm du lịch hè", "calendar": "solar", "from": {"month": 6, "day": 1}, "to": {"month": 8, "day": 20}, "peak_level": 2,
+     "note": "Học sinh nghỉ hè, giá vé máy bay và phòng biển tăng."},
+    {"id": "cao_diem_tet", "name": "Cao điểm đi lại dịp Tết", "calendar": "lunar", "from": {"month": 12, "day": 20}, "to": {"month": 1, "day": 10}, "peak_level": 3,
+     "note": "Vé xe, tàu, máy bay khan hiếm; nhiều quán đóng cửa từ 29 Tết tới mùng 4."}
+  ]
+}

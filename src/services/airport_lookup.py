@@ -9,8 +9,9 @@ Bảng cần cập nhật khi có sân bay mới đưa vào khai thác (VD Long 
 """
 
 import re
-import unicodedata
 from dataclasses import dataclass, field
+
+from ..utils.text import bo_dau
 
 _MA_IATA = re.compile(r"^[A-Za-z]{3}$")
 
@@ -94,15 +95,6 @@ SAN_BAY_VN: tuple[SanBay, ...] = (
 )
 
 _DIEM = {"code": 100, "city": 90, "name": 85, "alias": 80, "province": 60, "serves": 50, "chua": 30}
-
-
-def bo_dau(s: str) -> str:
-    """'Đà Nẵng' -> 'da nang': bỏ dấu, chữ thường, gom khoảng trắng."""
-    s = s.replace("đ", "d").replace("Đ", "D")
-    s = unicodedata.normalize("NFD", s)
-    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    s = re.sub(r"[^a-z0-9]+", " ", s.lower())
-    return s.strip()
 
 
 def _bo_tien_to(s: str) -> str:

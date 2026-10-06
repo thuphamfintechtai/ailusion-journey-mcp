@@ -11,6 +11,8 @@ tenacity>=8.2.0
 starlette>=0.37.0
 uvicorn>=0.29.0
 typing-extensions>=4.8.0
+# Đổi âm - dương lịch theo thuật toán Hồ Ngọc Đức (UTC+7), không có phụ thuộc
+lunar-vn>=1.4.0,<2.0.0
 
 # Testing dependencies
 pytest>=7.4.0

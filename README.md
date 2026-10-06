@@ -146,6 +146,13 @@ Tool đang dùng SerpApi:
 | `get_place_reviews` | `google_maps_reviews` | Review và chủ đề được nhắc nhiều |
 | `search_tripadvisor` | `tripadvisor` | Rating đối chiếu, diễn đàn |
 
+Tool không dùng SerpApi (không tốn quota):
+
+| Tool | Dùng cho |
+|---|---|
+| `vn_calendar` | Ngày nghỉ lễ / nghỉ bù, âm lịch, lễ hội theo tỉnh, mức cao điểm. Cách mở rộng: [docs/VN_CALENDAR.md](docs/VN_CALENDAR.md) |
+| `convert_lunar_date` | Đổi ngày âm - dương lịch |
+
 Kiểm tra quota từng key (miễn phí):
 
 ```bash

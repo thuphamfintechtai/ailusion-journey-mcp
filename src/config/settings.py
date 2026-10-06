@@ -35,6 +35,17 @@ class Settings(BaseSettings):
     serpapi_quota_cooldown: int = Field(default=6 * 3600)
     serpapi_invalid_key_cooldown: int = Field(default=24 * 3600)
 
+    # --- Lịch Việt Nam (tool vn_calendar) ---
+    # Các nguồn bật, cách nhau dấu phẩy; xem src/services/vn_calendar/sources.py
+    calendar_sources: str = Field(default="rules,google_ics,overrides")
+    calendar_ics_url: str = Field(
+        default="https://calendar.google.com/calendar/ical/vi.vietnamese%23holiday%40group.v.calendar.google.com/public/basic.ics"
+    )
+    calendar_ics_ttl: int = Field(default=24 * 3600)
+    # Bỏ trống thì dùng file đóng gói trong src/data/calendar/
+    calendar_rules_file: str = Field(default="")
+    calendar_overrides_dir: str = Field(default="")
+
     # --- HTTP client ---
     http_timeout: int = Field(default=30)
     http_max_retries: int = Field(default=2)

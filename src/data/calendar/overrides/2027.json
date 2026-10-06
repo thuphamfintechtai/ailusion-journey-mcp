@@ -1,0 +1,12 @@
+{
+  "_doc": "Quyết định riêng của năm 2027, nguồn 'overrides' (ưu tiên cao nhất). Mỗi năm một file <năm>.json; repo data-collector có thể ghi file vào thư mục này. days_off = khoảng ngày nghỉ chính thức (thay mọi nguồn khác trong khoảng đó); working_days = ngày đi làm bù. verified=false: chưa đối chiếu văn bản gốc.",
+  "year": 2027,
+  "source": "Thông báo lịch nghỉ lễ năm 2027",
+  "source_url": "",
+  "verified": false,
+  "days_off": [
+    {"from": "2027-02-04", "to": "2027-02-10", "name": "Nghỉ Tết Nguyên Đán Đinh Mùi"},
+    {"from": "2027-09-02", "to": "2027-09-05", "name": "Nghỉ Quốc khánh"}
+  ],
+  "working_days": []
+}
