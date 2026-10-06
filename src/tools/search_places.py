@@ -39,8 +39,9 @@ def register_search_places_tool(mcp: FastMCP):
         description=(
             "Tìm địa điểm trên Google Maps theo truy vấn tự nhiên: quán ăn, quán chay, "
             "cà phê, điểm tham quan, bãi biển, chợ, bệnh viện, nhà thuốc, cây xăng...\n\n"
-            "Khi nào dùng: lấy danh sách ứng viên kèm rating, số review, mức giá, địa chỉ, "
-            "toạ độ, trạng thái mở cửa. Nên đưa thành phố/khu vực vào `query` "
+            "Khi nào dùng: CHỈ khi cần rating, số review, mức giá hoặc trạng thái mở cửa để xếp "
+            "hạng ứng viên. Chỉ cần tìm địa điểm / toạ độ / khoảng cách thì dùng find_nearby "
+            "(Vietmap, không tốn quota SerpApi). Nên đưa thành phố/khu vực vào `query` "
             "(VD 'quán chay Hội An') hoặc truyền `lat`/`lng`.\n"
             "Khi nào KHÔNG dùng: khách sạn có giá phòng (dùng search_hotels). Cần giờ mở cửa "
             "từng ngày, giờ đông khách, thông tin tiếp cận xe lăn: gọi get_place_details với "

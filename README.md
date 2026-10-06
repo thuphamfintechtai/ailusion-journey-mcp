@@ -15,14 +15,14 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env          # sửa BACKEND_BASE_URL, LLM_BASE_URL, SERPAPI_API_KEYS
 
-python main.py                # HTTP  -> http://localhost:8000/mcp
+python main.py                # HTTP  -> http://localhost:8002/mcp
 MCP_TRANSPORT=stdio python main.py   # stdio -> dùng trong Claude Code/Desktop
 ```
 
 Kiểm tra:
 
 ```bash
-curl localhost:8000/health
+curl localhost:8002/health
 pytest
 ```
 
@@ -32,7 +32,7 @@ MCP Inspector là công cụ chính thức để xem và gọi thử tool/resour
 cần client thật. Cần Node.js (dùng `npx`, không phải cài gì thêm).
 
 Cách nhanh nhất — một lệnh chạy cả server lẫn Inspector web, Inspector đã
-cấu hình sẵn `http://localhost:8000/mcp` và tự mở trình duyệt, Ctrl+C tắt cả hai:
+cấu hình sẵn `http://localhost:8002/mcp` và tự mở trình duyệt, Ctrl+C tắt cả hai:
 
 ```bash
 bash scripts_test/dev.sh
@@ -47,31 +47,31 @@ source venv/bin/activate
 python main.py
 ```
 
-Server lên ở `http://localhost:8000/mcp`, health ở `http://localhost:8000/health`.
+Server lên ở `http://localhost:8002/mcp`, health ở `http://localhost:8002/health`.
 
 Nếu port đang bị chiếm:
 
 ```bash
-lsof -ti:8000 | xargs -r kill -9
+lsof -ti:8002 | xargs -r kill -9
 ```
 
 ### 2. Inspector - chế độ CLI (nhanh, hợp để script và CI)
 
 ```bash
 # Liệt kê tool
-npx -y @modelcontextprotocol/inspector --cli http://localhost:8000/mcp \
+npx -y @modelcontextprotocol/inspector --cli http://localhost:8002/mcp \
   --transport http --method tools/list
 
 # Liệt kê resource
-npx -y @modelcontextprotocol/inspector --cli http://localhost:8000/mcp \
+npx -y @modelcontextprotocol/inspector --cli http://localhost:8002/mcp \
   --transport http --method resources/list
 
 # Đọc một resource
-npx -y @modelcontextprotocol/inspector --cli http://localhost:8000/mcp \
+npx -y @modelcontextprotocol/inspector --cli http://localhost:8002/mcp \
   --transport http --method resources/read --uri "system://health"
 
 # Gọi một tool (đổi tool-name và tham số theo tool của bạn)
-npx -y @modelcontextprotocol/inspector --cli http://localhost:8000/mcp \
+npx -y @modelcontextprotocol/inspector --cli http://localhost:8002/mcp \
   --transport http --method tools/call \
   --tool-name build_itinerary --tool-arg destination="Đà Nẵng" --tool-arg days=3
 ```
@@ -93,7 +93,7 @@ Mở URL đó, rồi trong giao diện chọn:
 | Trường | Giá trị |
 |---|---|
 | Transport Type | `Streamable HTTP` |
-| URL | `http://localhost:8000/mcp` |
+| URL | `http://localhost:8002/mcp` |
 
 Bấm **Connect**. Tab `Tools` / `Resources` / `Prompts` sẽ hiện những gì
 `auto_register` đã nạp.
@@ -110,7 +110,7 @@ Cách sát thực tế nhất, vì đây đúng là cách tool sẽ được g�
 
 ```bash
 # Server HTTP đang chạy sẵn
-claude mcp add --transport http ailusion-journey http://localhost:8000/mcp
+claude mcp add --transport http ailusion-journey http://localhost:8002/mcp
 
 # Hoặc để Claude Code tự khởi động server qua stdio
 claude mcp add ailusion-journey -e MCP_TRANSPORT=stdio -- \
@@ -146,10 +146,59 @@ Tool đang dùng SerpApi:
 | `get_place_reviews` | `google_maps_reviews` | Review và chủ đề được nhắc nhiều |
 | `search_tripadvisor` | `tripadvisor` | Rating đối chiếu, diễn đàn |
 
+Tool dùng Vietmap (bản đồ Việt Nam, cấu hình `VIETMAP_API_KEYS`, fallback và
+cache giống SerpApi, code ở `src/services/vietmap_client.py`). Đây là lựa chọn
+mặc định cho tìm địa điểm / toạ độ / đường đi; SerpApi chỉ dùng khi cần giá,
+rating, review, giờ mở cửa:
+
+| Tool | Endpoint | Dùng cho |
+|---|---|---|
+| `find_nearby` | `autocomplete/v4` + `place/v4` | Tìm quán, khách sạn, cây xăng... quanh một điểm |
+| `geocode_vn` | `search/v4`, `reverse/v4` | Toạ độ, chuẩn hoá địa chỉ cũ <-> mới sau sáp nhập |
+| `get_route` | `route/v4` | Chỉ đường xe máy / ô tô / xe tải, phí cầu đường |
+| `distance_matrix` | `matrix/v4` | Thời gian, quãng đường giữa nhiều điểm |
+| `optimize_route` | `tsp/v4` | Sắp thứ tự đi các điểm cho ngắn nhất |
+| `plan_day_route` | `vrp` | Lộ trình trong ngày theo giờ mở cửa, thời gian tham quan, nghỉ trưa |
+| `elevation_profile` | `route/v4` + Open Topo Data | Độ cao, độ dốc dọc tuyến (đèo, xe máy, xe lăn / xe đẩy) |
+
+Tool dùng Tavily (tìm kiếm web, cấu hình `TAVILY_API_KEYS`, gói free 1.000
+credit/tháng, code ở `src/services/tavily_client.py`). Mỗi kết quả có
+`source_type`: `chinh_thong` (.gov.vn), `bao_chi` (báo có giấy phép) hoặc `khac`:
+
+| Tool | Endpoint | Dùng cho |
+|---|---|---|
+| `web_search` | `search` | Kiểm chứng thông tin, tìm kinh nghiệm, phản biện |
+| `local_news` | `search` (`topic=news`) | Tin cấm đường, sạt lở, bão, quy định mới theo địa phương |
+| `fetch_page` | `extract` | Đọc một trang đã biết URL, lọc đoạn liên quan bằng `focus` |
+| `search_events` | `search` | Concert, festival, pháo hoa có ngày cụ thể |
+
+Tool dùng WeatherAPI.com (cấu hình `WEATHERAPI_API_KEYS`, code ở
+`src/services/weather_client.py`). Tên địa danh được Vietmap đổi ra toạ độ vùng
+trước (bộ tra tên của WeatherAPI hay nhầm địa danh nhỏ ở Việt Nam); tên trùng
+giữa nhiều tỉnh thì tool báo lỗi kèm ứng viên thay vì đoán:
+
+| Tool | Endpoint | Dùng cho |
+|---|---|---|
+| `weather_forecast` | `forecast` / `future` / `history` | Thời tiết theo ngày, cảnh báo theo ngưỡng KTTV (nắng nóng, rét đậm, mưa to, UV) |
+| `air_quality` | `forecast?aqi=yes` | Mức AQI, PM2.5, giờ ô nhiễm nhất, lời khuyên cho trẻ nhỏ / người già |
+| `marine_forecast` | `marine` | Sóng, gió giật, nhiệt độ nước, thuỷ triều cho chuyến đi đảo |
+| `sun_and_sky` | `astronomy` + `forecast` | Giờ mặt trời / mặt trăng, giờ vàng, gợi ý săn mây và ngắm sao |
+
 Tool không dùng SerpApi (không tốn quota):
 
 | Tool | Dùng cho |
 |---|---|
+| `parse_money` | Đọc số tiền trong câu: '500k', '2tr5', '3 củ', '$50', '2-3 triệu/người' |
+| `convert_currency` | Đổi tiền theo tỷ giá Vietcombank (cache >= 5 phút), dự phòng tỷ giá thị trường |
+| `calc_trip_cost` | Cộng chi phí theo hạng mục, VAT / giá ++, xăng, phí cầu đường, dự phòng, so ngân sách |
+| `score_options` | Xếp hạng phương án bằng TOPSIS / tổng trọng số, nhiều bộ trọng số |
+| `export_itinerary` | Xuất lịch trình ra file `.ics` và link Google Maps |
+| `mask_pii` | Che SĐT, email, CCCD, số tài khoản, số thẻ, biển số trước khi lưu / ghi log |
+| `source_trust` | Chấm tin cậy domain: loại nguồn, hạng Tranco, tuổi domain (Wayback) |
+| `disaster_alerts` | Cảnh báo thiên tai gần Việt Nam và Biển Đông (GDACS) |
+| `google_news` | Tin mới theo từ khoá (Google News RSS). **Chỉ dùng phi thương mại**, tắt bằng `GOOGLE_NEWS_RSS_ENABLED=false` |
+| `convert_admin_unit` | Đổi phường / quận / tỉnh cũ <-> mới sau sáp nhập 1/7/2025 (thư viện `vietnam-provinces`, offline, GPL-3.0) |
+| `list_admin_units` | Danh mục 34 tỉnh / thành và phường / xã hiện hành, kiểm tra tên có tồn tại |
 | `vn_calendar` | Ngày nghỉ lễ / nghỉ bù, âm lịch, lễ hội theo tỉnh, mức cao điểm. Cách mở rộng: [docs/VN_CALENDAR.md](docs/VN_CALENDAR.md) |
 | `convert_lunar_date` | Đổi ngày âm - dương lịch |
 
