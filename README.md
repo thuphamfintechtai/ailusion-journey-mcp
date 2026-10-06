@@ -131,7 +131,22 @@ SERPAPI_API_KEYS=<key_1>,<key_2>   # nhiều key cách nhau bởi dấu phẩy
 ```
 
 Client `src/services/serpapi_client.py` tự chuyển sang key kế tiếp khi key
-hiện tại hết quota hoặc bị từ chối. Kiểm tra quota từng key (miễn phí):
+hiện tại hết quota, bị từ chối, timeout hoặc SerpApi lỗi 5xx; key lỗi được cho
+nghỉ một thời gian để không tốn request (chi tiết ở docs/SERPAPI.md mục 1).
+
+Tool đang dùng SerpApi:
+
+| Tool | Engine | Dùng cho |
+|---|---|---|
+| `search_hotels` | `google_hotels` | Khách sạn / homestay, giá theo đêm (VND) |
+| `search_flights` | `google_flights` | Vé máy bay một chiều / khứ hồi |
+| `find_airports` | bảng nội bộ VN, `google_flights_autocomplete` | Tra mã IATA từ tên thành phố / điểm đến |
+| `search_places` | `google_maps` | Tìm quán ăn, điểm tham quan, cây xăng... |
+| `get_place_details` | `google_maps` (`type=place`) | Giờ mở cửa, giờ đông khách, tiếp cận |
+| `get_place_reviews` | `google_maps_reviews` | Review và chủ đề được nhắc nhiều |
+| `search_tripadvisor` | `tripadvisor` | Rating đối chiếu, diễn đàn |
+
+Kiểm tra quota từng key (miễn phí):
 
 ```bash
 python -m scripts_test.check_serpapi_keys
