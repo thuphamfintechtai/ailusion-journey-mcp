@@ -159,6 +159,17 @@ rating, review, giờ mở cửa:
 | `distance_matrix` | `matrix/v4` | Thời gian, quãng đường giữa nhiều điểm |
 | `optimize_route` | `tsp/v4` | Sắp thứ tự đi các điểm cho ngắn nhất |
 
+Tool dùng Tavily (tìm kiếm web, cấu hình `TAVILY_API_KEYS`, gói free 1.000
+credit/tháng, code ở `src/services/tavily_client.py`). Mỗi kết quả có
+`source_type`: `chinh_thong` (.gov.vn), `bao_chi` (báo có giấy phép) hoặc `khac`:
+
+| Tool | Endpoint | Dùng cho |
+|---|---|---|
+| `web_search` | `search` | Kiểm chứng thông tin, tìm kinh nghiệm, phản biện |
+| `local_news` | `search` (`topic=news`) | Tin cấm đường, sạt lở, bão, quy định mới theo địa phương |
+| `fetch_page` | `extract` | Đọc một trang đã biết URL, lọc đoạn liên quan bằng `focus` |
+| `search_events` | `search` | Concert, festival, pháo hoa có ngày cụ thể |
+
 Tool không dùng SerpApi (không tốn quota):
 
 | Tool | Dùng cho |

@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # Cache kết quả trong bộ nhớ (giây). Gói free chỉ miễn phí 2 tháng đầu nên cache để đỡ tốn.
     vietmap_cache_ttl: int = Field(default=3600)
 
+    # --- Tavily (tìm kiếm web, tin tức) ---
+    tavily_api_keys: str = Field(default="")
+    tavily_base_url: str = Field(default="https://api.tavily.com")
+    tavily_timeout: int = Field(default=30)
+    # Tin tức đổi nhanh nên cache ngắn hơn Vietmap.
+    tavily_cache_ttl: int = Field(default=1800)
+
     # --- Lịch Việt Nam (tool vn_calendar) ---
     # Các nguồn bật, cách nhau dấu phẩy; xem src/services/vn_calendar/sources.py
     calendar_sources: str = Field(default="rules,google_ics,overrides")
@@ -73,6 +80,10 @@ class Settings(BaseSettings):
     @property
     def vietmap_key_list(self) -> list[str]:
         return [k.strip() for k in self.vietmap_api_keys.split(",") if k.strip()]
+
+    @property
+    def tavily_key_list(self) -> list[str]:
+        return [k.strip() for k in self.tavily_api_keys.split(",") if k.strip()]
 
     @property
     def serpapi_key_list(self) -> list[str]:
