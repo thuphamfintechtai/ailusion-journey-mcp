@@ -158,6 +158,8 @@ rating, review, giờ mở cửa:
 | `get_route` | `route/v4` | Chỉ đường xe máy / ô tô / xe tải, phí cầu đường |
 | `distance_matrix` | `matrix/v4` | Thời gian, quãng đường giữa nhiều điểm |
 | `optimize_route` | `tsp/v4` | Sắp thứ tự đi các điểm cho ngắn nhất |
+| `plan_day_route` | `vrp` | Lộ trình trong ngày theo giờ mở cửa, thời gian tham quan, nghỉ trưa |
+| `elevation_profile` | `route/v4` + Open Topo Data | Độ cao, độ dốc dọc tuyến (đèo, xe máy, xe lăn / xe đẩy) |
 
 Tool dùng Tavily (tìm kiếm web, cấu hình `TAVILY_API_KEYS`, gói free 1.000
 credit/tháng, code ở `src/services/tavily_client.py`). Mỗi kết quả có
@@ -186,6 +188,14 @@ Tool không dùng SerpApi (không tốn quota):
 
 | Tool | Dùng cho |
 |---|---|
+| `parse_money` | Đọc số tiền trong câu: '500k', '2tr5', '3 củ', '$50', '2-3 triệu/người' |
+| `convert_currency` | Đổi tiền theo tỷ giá Vietcombank (cache >= 5 phút), dự phòng tỷ giá thị trường |
+| `calc_trip_cost` | Cộng chi phí theo hạng mục, VAT / giá ++, xăng, phí cầu đường, dự phòng, so ngân sách |
+| `score_options` | Xếp hạng phương án bằng TOPSIS / tổng trọng số, nhiều bộ trọng số |
+| `export_itinerary` | Xuất lịch trình ra file `.ics` và link Google Maps |
+| `mask_pii` | Che SĐT, email, CCCD, số tài khoản, số thẻ, biển số trước khi lưu / ghi log |
+| `source_trust` | Chấm tin cậy domain: loại nguồn, hạng Tranco, tuổi domain (Wayback) |
+| `disaster_alerts` | Cảnh báo thiên tai gần Việt Nam và Biển Đông (GDACS) |
 | `convert_admin_unit` | Đổi phường / quận / tỉnh cũ <-> mới sau sáp nhập 1/7/2025 (thư viện `vietnam-provinces`, offline, GPL-3.0) |
 | `list_admin_units` | Danh mục 34 tỉnh / thành và phường / xã hiện hành, kiểm tra tên có tồn tại |
 | `vn_calendar` | Ngày nghỉ lễ / nghỉ bù, âm lịch, lễ hội theo tỉnh, mức cao điểm. Cách mở rộng: [docs/VN_CALENDAR.md](docs/VN_CALENDAR.md) |

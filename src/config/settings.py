@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     weatherapi_timeout: int = Field(default=20)
     weatherapi_cache_ttl: int = Field(default=1800)
 
+    # --- Tỷ giá (Vietcombank + dự phòng) ---
+    # Vietcombank yêu cầu tối đa 1 request / 5 phút; giá trị nhỏ hơn 300 bị nâng lên 300.
+    fx_cache_ttl: int = Field(default=1800)
+
     # --- Lịch Việt Nam (tool vn_calendar) ---
     # Các nguồn bật, cách nhau dấu phẩy; xem src/services/vn_calendar/sources.py
     calendar_sources: str = Field(default="rules,google_ics,overrides")

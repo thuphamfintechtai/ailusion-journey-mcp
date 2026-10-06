@@ -10,6 +10,7 @@ Khác ở hai điểm:
 Tài liệu: https://maps.vietmap.vn/docs/
 """
 
+import json
 import re
 import time
 import unicodedata
@@ -142,10 +143,13 @@ class VietmapClient:
         while len(self._cache) > _CACHE_TOI_DA:
             self._cache.popitem(last=False)
 
-    async def get(self, path: str, params: list[tuple[str, Any]]) -> Any:
-        """GET có fallback key + cache. `params` là list cặp vì `point` lặp nhiều lần."""
+    async def get(self, path: str, params: list[tuple[str, Any]], body: dict[str, Any] | None = None) -> Any:
+        """Gọi Vietmap có fallback key + cache. `params` là list cặp vì `point` lặp nhiều lần.
+
+        Có `body` thì gửi POST JSON (VRP). Lỗi nghiệp vụ trong body: route / matrix / tsp
+        trả `code` dạng chuỗi ("OK" là thành công), VRP trả số (0 là thành công)."""
         params = [(k, v) for k, v in params if v is not None]
-        khoa = (path, tuple(params))
+        khoa = (path, tuple(params), json.dumps(body, sort_keys=True) if body is not None else None)
         if self.cache_ttl > 0 and (co := self._doc_cache(khoa)) is not None:
             return co
 
@@ -161,7 +165,10 @@ class VietmapClient:
         for idx in ung_vien:
             key = self.api_keys[idx]
             try:
-                r = await self.client.get(path, params=[*params, ("apikey", key)])
+                if body is None:
+                    r = await self.client.get(path, params=[*params, ("apikey", key)])
+                else:
+                    r = await self.client.post(path, params=[*params, ("apikey", key)], json=body)
             except (httpx.TimeoutException, httpx.TransportError) as e:
                 logger.warning("Gọi Vietmap lỗi mạng, thử key kế tiếp", key=self._mask(key), loi=type(e).__name__)
                 loi_cuoi, do_key = VietmapError(f"Lỗi mạng khi gọi Vietmap: {type(e).__name__}"), False
@@ -347,6 +354,10 @@ class VietmapClient:
         if p.get("lat") is None:
             raise VietmapError(f"Không lấy được toạ độ cho '{ten}'", code="NOT_FOUND")
         return Diem(p["lat"], p["lng"], p.get("display") or chon.get("display") or ten, chon["ref_id"])
+
+    async def vrp(self, vehicles: list[dict[str, Any]], jobs: list[dict[str, Any]]) -> dict[str, Any]:
+        """Bài toán xếp tuyến có khung giờ. Tính phí: số xe x số điểm transaction."""
+        return await self.get("/vrp", [("api-version", "1.1")], body={"vehicles": vehicles, "jobs": jobs})
 
     async def route(self, diem: list[Diem], vehicle: str, **kw: Any) -> dict[str, Any]:
         return await self.get(
