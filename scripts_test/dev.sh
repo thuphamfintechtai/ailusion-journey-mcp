@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Chạy server MCP (HTTP :8000) và MCP Inspector web trong một lệnh.
-# Inspector được cấu hình sẵn Streamable HTTP -> http://localhost:8000/mcp,
+# Chạy server MCP (HTTP, cổng theo MCP_PORT trong .env) và MCP Inspector web trong một lệnh.
+# Inspector được cấu hình sẵn Streamable HTTP -> http://localhost:<MCP_PORT>/mcp,
 # tự mở trình duyệt. Ctrl+C để tắt cả hai.
 #
 # Chạy từ bất kỳ đâu:  bash scripts_test/dev.sh
@@ -8,7 +8,10 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-PORT="${MCP_PORT:-8000}"
+# Lấy cổng giống hệt server: server nạp .env với override=True, nên MCP_PORT trong .env
+# thắng biến môi trường. Đọc sai cổng thì script sẽ kill nhầm tiến trình khác (BE chạy ở 8000).
+PORT="$(grep -E '^MCP_PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d ' "')"
+PORT="${PORT:-${MCP_PORT:-8000}}"
 
 if [ -f venv/bin/activate ]; then
   source venv/bin/activate

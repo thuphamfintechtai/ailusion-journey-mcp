@@ -119,6 +119,7 @@ llm_client = HttpClient(
 async def close_http_clients() -> None:
     """Đóng mọi client khi server shutdown."""
     from .serpapi_client import serpapi_client
+    from .vietmap_client import vietmap_client
 
-    for client in (backend_client, llm_client, serpapi_client):
+    for client in (backend_client, llm_client, serpapi_client, vietmap_client):
         await client.close()

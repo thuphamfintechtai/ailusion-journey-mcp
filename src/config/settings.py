@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     serpapi_quota_cooldown: int = Field(default=6 * 3600)
     serpapi_invalid_key_cooldown: int = Field(default=24 * 3600)
 
+    # --- Vietmap (bản đồ, chỉ đường Việt Nam) ---
+    # Nhiều key cách nhau dấu phẩy, fallback giống SerpApi.
+    vietmap_api_keys: str = Field(default="")
+    vietmap_base_url: str = Field(default="https://maps.vietmap.vn/api")
+    vietmap_timeout: int = Field(default=20)
+    # Cache kết quả trong bộ nhớ (giây). Gói free chỉ miễn phí 2 tháng đầu nên cache để đỡ tốn.
+    vietmap_cache_ttl: int = Field(default=3600)
+
     # --- Lịch Việt Nam (tool vn_calendar) ---
     # Các nguồn bật, cách nhau dấu phẩy; xem src/services/vn_calendar/sources.py
     calendar_sources: str = Field(default="rules,google_ics,overrides")
@@ -61,6 +69,10 @@ class Settings(BaseSettings):
         if v.upper() not in valid_levels:
             raise ValueError(f"Log level must be one of: {valid_levels}")
         return v.upper()
+
+    @property
+    def vietmap_key_list(self) -> list[str]:
+        return [k.strip() for k in self.vietmap_api_keys.split(",") if k.strip()]
 
     @property
     def serpapi_key_list(self) -> list[str]:

@@ -15,14 +15,14 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env          # sửa BACKEND_BASE_URL, LLM_BASE_URL, SERPAPI_API_KEYS
 
-python main.py                # HTTP  -> http://localhost:8000/mcp
+python main.py                # HTTP  -> http://localhost:8002/mcp
 MCP_TRANSPORT=stdio python main.py   # stdio -> dùng trong Claude Code/Desktop
 ```
 
 Kiểm tra:
 
 ```bash
-curl localhost:8000/health
+curl localhost:8002/health
 pytest
 ```
 
@@ -32,7 +32,7 @@ MCP Inspector là công cụ chính thức để xem và gọi thử tool/resour
 cần client thật. Cần Node.js (dùng `npx`, không phải cài gì thêm).
 
 Cách nhanh nhất — một lệnh chạy cả server lẫn Inspector web, Inspector đã
-cấu hình sẵn `http://localhost:8000/mcp` và tự mở trình duyệt, Ctrl+C tắt cả hai:
+cấu hình sẵn `http://localhost:8002/mcp` và tự mở trình duyệt, Ctrl+C tắt cả hai:
 
 ```bash
 bash scripts_test/dev.sh
@@ -47,31 +47,31 @@ source venv/bin/activate
 python main.py
 ```
 
-Server lên ở `http://localhost:8000/mcp`, health ở `http://localhost:8000/health`.
+Server lên ở `http://localhost:8002/mcp`, health ở `http://localhost:8002/health`.
 
 Nếu port đang bị chiếm:
 
 ```bash
-lsof -ti:8000 | xargs -r kill -9
+lsof -ti:8002 | xargs -r kill -9
 ```
 
 ### 2. Inspector - chế độ CLI (nhanh, hợp để script và CI)
 
 ```bash
 # Liệt kê tool
-npx -y @modelcontextprotocol/inspector --cli http://localhost:8000/mcp \
+npx -y @modelcontextprotocol/inspector --cli http://localhost:8002/mcp \
   --transport http --method tools/list
 
 # Liệt kê resource
-npx -y @modelcontextprotocol/inspector --cli http://localhost:8000/mcp \
+npx -y @modelcontextprotocol/inspector --cli http://localhost:8002/mcp \
   --transport http --method resources/list
 
 # Đọc một resource
-npx -y @modelcontextprotocol/inspector --cli http://localhost:8000/mcp \
+npx -y @modelcontextprotocol/inspector --cli http://localhost:8002/mcp \
   --transport http --method resources/read --uri "system://health"
 
 # Gọi một tool (đổi tool-name và tham số theo tool của bạn)
-npx -y @modelcontextprotocol/inspector --cli http://localhost:8000/mcp \
+npx -y @modelcontextprotocol/inspector --cli http://localhost:8002/mcp \
   --transport http --method tools/call \
   --tool-name build_itinerary --tool-arg destination="Đà Nẵng" --tool-arg days=3
 ```
@@ -93,7 +93,7 @@ Mở URL đó, rồi trong giao diện chọn:
 | Trường | Giá trị |
 |---|---|
 | Transport Type | `Streamable HTTP` |
-| URL | `http://localhost:8000/mcp` |
+| URL | `http://localhost:8002/mcp` |
 
 Bấm **Connect**. Tab `Tools` / `Resources` / `Prompts` sẽ hiện những gì
 `auto_register` đã nạp.
@@ -110,7 +110,7 @@ Cách sát thực tế nhất, vì đây đúng là cách tool sẽ được g�
 
 ```bash
 # Server HTTP đang chạy sẵn
-claude mcp add --transport http ailusion-journey http://localhost:8000/mcp
+claude mcp add --transport http ailusion-journey http://localhost:8002/mcp
 
 # Hoặc để Claude Code tự khởi động server qua stdio
 claude mcp add ailusion-journey -e MCP_TRANSPORT=stdio -- \
@@ -145,6 +145,19 @@ Tool đang dùng SerpApi:
 | `get_place_details` | `google_maps` (`type=place`) | Giờ mở cửa, giờ đông khách, tiếp cận |
 | `get_place_reviews` | `google_maps_reviews` | Review và chủ đề được nhắc nhiều |
 | `search_tripadvisor` | `tripadvisor` | Rating đối chiếu, diễn đàn |
+
+Tool dùng Vietmap (bản đồ Việt Nam, cấu hình `VIETMAP_API_KEYS`, fallback và
+cache giống SerpApi, code ở `src/services/vietmap_client.py`). Đây là lựa chọn
+mặc định cho tìm địa điểm / toạ độ / đường đi; SerpApi chỉ dùng khi cần giá,
+rating, review, giờ mở cửa:
+
+| Tool | Endpoint | Dùng cho |
+|---|---|---|
+| `find_nearby` | `autocomplete/v4` + `place/v4` | Tìm quán, khách sạn, cây xăng... quanh một điểm |
+| `geocode_vn` | `search/v4`, `reverse/v4` | Toạ độ, chuẩn hoá địa chỉ cũ <-> mới sau sáp nhập |
+| `get_route` | `route/v4` | Chỉ đường xe máy / ô tô / xe tải, phí cầu đường |
+| `distance_matrix` | `matrix/v4` | Thời gian, quãng đường giữa nhiều điểm |
+| `optimize_route` | `tsp/v4` | Sắp thứ tự đi các điểm cho ngắn nhất |
 
 Tool không dùng SerpApi (không tốn quota):
 
