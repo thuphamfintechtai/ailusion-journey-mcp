@@ -34,9 +34,23 @@ Trong code:
 
 - `settings.serpapi_key_list` — list key đã tách và bỏ khoảng trắng
 - `src/services/serpapi_client.py` — `serpapi_client.search(engine, **params)`
-  và `serpapi_client.account()`. Khi key đang dùng trả **401** (key sai) hoặc
-  **429** (hết quota / chạm giới hạn giờ) thì client tự chuyển sang key kế tiếp
-  và nhớ key còn dùng được cho lần sau.
+  và `serpapi_client.account()`, có cơ chế fallback giữa các key (bảng dưới).
+
+Fallback giữa các key: mỗi lần gọi thử lần lượt các key, bắt đầu từ key thành
+công gần nhất. Key lỗi bị cho nghỉ để lần sau không tốn request vào nó:
+
+| Lỗi | Xử lý | Biến cấu hình (giây) |
+|---|---|---|
+| 401 / 403, hoặc 200 kèm "Invalid API key" | Nghỉ, thử key kế tiếp | `SERPAPI_INVALID_KEY_COOLDOWN` (86400) |
+| 429 "run out of searches" (hết quota tháng) | Nghỉ, thử key kế tiếp | `SERPAPI_QUOTA_COOLDOWN` (21600) |
+| 429 khác (chạm giới hạn theo giờ) | Nghỉ, thử key kế tiếp | `SERPAPI_RATE_LIMIT_COOLDOWN` (900) |
+| 5xx, timeout, lỗi mạng | Không nghỉ, thử key kế tiếp | |
+| 4xx khác (sai tham số) | Raise luôn | |
+
+Khi mọi key đều đang nghỉ thì raise `SerpApiError(het_key=True)` ngay mà không
+gọi SerpApi; tool trả `error_code=-4` để model biết là đừng gọi lại liền.
+Trạng thái nghỉ nằm trong bộ nhớ process, restart server là reset.
+`serpapi_client.key_status()` trả trạng thái từng key (đã che) để debug.
 - Log của `httpx` bị hạ xuống mức WARNING vì URL SerpApi chứa `api_key`.
 
 Kiểm tra quota từng key (Account API, không tốn search):

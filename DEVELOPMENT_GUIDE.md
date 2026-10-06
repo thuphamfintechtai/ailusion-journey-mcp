@@ -35,6 +35,7 @@ Bắt buộc:
 | Hàm bắt đầu bằng `register_` | `auto_register` quét theo prefix này |
 | File bắt đầu bằng `_` thì bị bỏ qua | Dùng cho template / WIP chưa muốn lộ |
 | Tên tool tối đa 60 ký tự | Một số client cắt tên tool dài |
+| `title` dạng `English Name (Tên tiếng Việt)` | `name` chỉ cho phép `[a-zA-Z0-9_-]`, tên hiển thị song ngữ đặt ở `title` |
 | `Annotated[..., Field(description=...)]` cho mọi tham số | Model đọc description để biết truyền gì |
 | Không để exception lọt ra ngoài | Exception thô làm hỏng phiên MCP của client |
 | Trả `dict`, qua `drop_empty()` | Bỏ field rỗng, tiết kiệm token của model |
