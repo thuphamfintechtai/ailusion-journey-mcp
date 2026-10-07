@@ -9,6 +9,8 @@ httpx>=0.27.0
 structlog>=23.2.0
 tenacity>=8.2.0
 starlette>=0.37.0
+# Đọc dữ liệu đã cào trong Postgres (src/services/travel_db.py)
+asyncpg>=0.29.0
 uvicorn>=0.29.0
 typing-extensions>=4.8.0
 # Đổi âm - dương lịch theo thuật toán Hồ Ngọc Đức (UTC+7), không có phụ thuộc

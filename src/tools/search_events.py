@@ -8,8 +8,10 @@ from fastmcp import FastMCP
 from pydantic import Field
 
 from ..services.tavily_client import TavilyError, tavily_client
+from ..services.travel_db import travel_db
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
+from ._db_common import fallback_db, gon_le_hoi
 from ._serpapi_common import doc_ngay
 from ._tavily_common import gon_ket_qua, loi_tavily
 
@@ -24,6 +26,18 @@ def _thang_trong_khoang(bd: date, kt: date) -> list[str]:
     return thang
 
 
+async def _tu_db(location: str, bd: date, kt: date, kind: str | None, max_results: int) -> dict[str, Any] | None:
+    ds = await travel_db.festivals(location, bd, kt, keyword=kind, limit=max_results)
+    if not ds:
+        return None
+    return {
+        "status": "success",
+        "location": location,
+        "range": {"from": bd.isoformat(), "to": kt.isoformat()},
+        "events": [gon_le_hoi(e) for e in ds],
+    }
+
+
 def register_search_events_tool(mcp: FastMCP):
     @mcp.tool(
         name="search_events",
@@ -35,7 +49,9 @@ def register_search_events_tool(mcp: FastMCP):
             "trước khi đưa vào lịch trình.\n\n"
             "Khi nào dùng: biết có gì đặc biệt trong dịp đi, hoặc cảnh báo đông đúc / tăng giá.\n"
             "Lễ hội truyền thống theo âm lịch đã có trong vn_calendar (không tốn credit), dùng "
-            "tool đó trước.\n\nMỗi lần gọi tốn 1 credit Tavily."
+            "tool đó trước. Lịch lễ hội đã lưu sẵn (miễn phí) có ở find_festivals.\n\n"
+            "Mỗi lần gọi tốn 1 credit Tavily. Khi Tavily lỗi / hết credit tool tự trả lễ hội đã lưu "
+            "(`data_source`='ailusion_db', danh sách ở `events` thay cho `results`)."
         ),
         tags={"journey", "tavily", "events"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "tavily:search"},
@@ -91,7 +107,11 @@ def register_search_events_tool(mcp: FastMCP):
 
         except TavilyError as e:
             logger.error("search_events gọi Tavily thất bại", error=str(e))
-            return loi_tavily(e, input_context)
+            return await fallback_db(
+                "search_events",
+                loi_tavily(e, input_context),
+                lambda: _tu_db(location.strip(), bd, kt, kind, max_results),
+            )
         except Exception as e:
             logger.error("search_events thất bại", error=str(e), exc_info=True)
             return format_mcp_tool_error_response(

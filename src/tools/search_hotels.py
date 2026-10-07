@@ -8,9 +8,12 @@ from fastmcp import FastMCP
 from pydantic import Field
 
 from ..services.serpapi_client import SerpApiError, serpapi_client
+from ..services.travel_db import travel_db
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
-from ._serpapi_common import doc_ngay, khong_co_ket_qua, loi_serpapi, tham_so_vn, nhan_lua_chon
+from ._cho_o import tim_cho_o
+from ._db_common import fallback_db
+from ._serpapi_common import doc_ngay, khong_co_ket_qua, loi_serpapi, nhan_lua_chon, tham_so_vn
 
 logger = structlog.get_logger(__name__)
 
@@ -52,6 +55,46 @@ def _gon_khach_san(p: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# sort_by của search_hotels -> của find_stays
+_SORT_DB = {"relevance": "popular", "lowest_price": "price_low", "highest_rating": "rating", "most_reviewed": "popular"}
+
+
+async def _tu_db(
+    destination: str, min_price: int | None, max_price: int | None, sort_by: str, vacation_rentals: bool, limit: int
+) -> dict[str, Any] | None:
+    """Chỗ ở đã lưu (giá tham khảo / đêm lúc cào, không theo ngày) khi SerpApi lỗi."""
+    dest = await travel_db.find_destination(destination)
+    if not dest:
+        return None
+    kq = await tim_cho_o(
+        destination_key=dest,
+        min_price=min_price,
+        max_price=max_price,
+        kind="apartment" if vacation_rentals else None,
+        sort_by=_SORT_DB[sort_by],
+        limit=limit,
+    )
+    tk = kq["price_stats_vnd"]
+    ngan_sach_thap = not kq["stays"] and max_price is not None and tk and max_price < tk["p25"]
+    if not kq["stays"] and not ngan_sach_thap:
+        return None
+    return {
+        "status": "success",
+        "destination": destination,
+        "currency": "VND",
+        "total_found": kq["total_found"],
+        "hotels": kq["stays"],
+        "price_stats_vnd": kq["price_stats_vnd"],
+        "note": (
+            f"Không có chỗ ở đã lưu trong ngân sách: thấp hơn 75% chỗ ở của khu vực (p25 = {tk['p25']:,} VND / đêm). "
+            if ngan_sach_thap
+            else ""
+        )
+        + kq["price_note"],
+        "data_as_of": kq["data_as_of"],
+    }
+
+
 def register_search_hotels_tool(mcp: FastMCP):
     @mcp.tool(
         name="search_hotels",
@@ -63,7 +106,9 @@ def register_search_hotels_tool(mcp: FastMCP):
             "Khi nào dùng: cần giá phòng thật cho một khoảng ngày cụ thể, so sánh chỗ ở "
             "theo ngân sách hoặc tiện nghi (hồ bơi, chỗ đỗ xe, thân thiện trẻ em...).\n"
             "Khi nào KHÔNG dùng: tìm quán ăn / điểm tham quan (dùng search_places).\n\n"
-            "Mỗi lần gọi tốn 1 lượt quota, nên gọi một lần với đủ bộ lọc thay vì gọi lặp.\n"
+            "Mỗi lần gọi tốn 1 lượt quota, nên gọi một lần với đủ bộ lọc thay vì gọi lặp. Lọc nhanh theo "
+            "ngân sách không cần giá đúng ngày thì dùng find_stays (miễn phí). Khi SerpApi lỗi / hết quota "
+            "tool tự trả chỗ ở đã lưu với giá tham khảo (`data_source`='ailusion_db').\n"
             "Trả về: danh sách `hotels`, giá tính bằng VND."
         ),
         tags={"journey", "serpapi", "price"},
@@ -167,7 +212,11 @@ def register_search_hotels_tool(mcp: FastMCP):
 
         except SerpApiError as e:
             logger.error("search_hotels gọi SerpApi thất bại", error=str(e))
-            return loi_serpapi(e, input_context)
+            return await fallback_db(
+                "search_hotels",
+                loi_serpapi(e, input_context),
+                lambda: _tu_db(destination.strip(), min_price, max_price, sort_by, vacation_rentals, limit),
+            )
         except Exception as e:
             logger.error("search_hotels thất bại", error=str(e), exc_info=True)
             return format_mcp_tool_error_response(

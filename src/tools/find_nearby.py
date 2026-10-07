@@ -7,12 +7,46 @@ import structlog
 from fastmcp import FastMCP
 from pydantic import Field
 
+from ..services.travel_db import travel_db
 from ..services.vietmap_client import VietmapError, vietmap_client
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
+from ._db_common import fallback_db, gon_dia_diem, loc_dia_diem, moi_nhat
 from ._vietmap_common import gon_diem, loi_vietmap
 
 logger = structlog.get_logger(__name__)
+
+
+async def _tu_db(
+    query: str, near: str | None, lat: float | None, lng: float | None, radius_m: int, limit: int
+) -> dict[str, Any] | None:
+    """Tìm quanh tâm trong gmaps_place đã lưu. Tâm lấy từ lat/lng, tên địa điểm đã lưu, hoặc tâm điểm đến."""
+    if lat is None and near:
+        p = await travel_db.find_place(near)
+        if p and p.get("lat") is not None:
+            lat, lng = p["lat"], p["lng"]
+        else:
+            dest = await travel_db.find_destination(near)
+            tam = (await travel_db.destinations()).get(dest or "")
+            if not tam or tam.get("lat") is None:
+                return None
+            lat, lng = tam["lat"], tam["lng"]
+    ket_qua, khop_du = loc_dia_diem(
+        await travel_db.places(), query=query, lat=lat, lng=lng, radius_km=radius_m / 1000, sort_by="distance"
+    )
+    if not ket_qua:
+        return None
+    return {
+        "status": "success",
+        "query": query,
+        "center": {"lat": lat, "lng": lng},
+        "radius_m": radius_m,
+        "total_found": len(ket_qua),
+        "places": [gon_dia_diem(p) for p in ket_qua[:limit]],
+        "note": "Kết quả từ dữ liệu đã lưu không có `ref_id` Vietmap; dùng lat/lng cho get_route."
+        + ("" if khop_du else " Không có điểm khớp đủ mọi từ khoá, đã trả điểm khớp một phần."),
+        "data_as_of": moi_nhat(ket_qua),
+    }
 
 
 def register_find_nearby_tool(mcp: FastMCP):
@@ -29,7 +63,8 @@ def register_find_nearby_tool(mcp: FastMCP):
             "search_places / get_place_details (tốn quota) cho vài điểm trong danh sách ngắn.\n\n"
             "Vị trí tâm: truyền `lat`/`lng`, hoặc `near` là tên / địa chỉ (VD 'phố cổ Hội An').\n"
             "Trả về tối đa 10 điểm, `distance_km` tính từ tâm, `ref_id` dùng lại được cho "
-            "get_route / distance_matrix / optimize_route."
+            "get_route / distance_matrix / optimize_route. Khi Vietmap lỗi / hết quota tool tự tìm trong "
+            "địa điểm Google Maps đã lưu (`data_source`='ailusion_db', không có `ref_id`)."
         ),
         tags={"journey", "vietmap", "maps"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "vietmap:autocomplete/v4 + place/v4"},
@@ -103,7 +138,11 @@ def register_find_nearby_tool(mcp: FastMCP):
 
         except VietmapError as e:
             logger.error("find_nearby gọi Vietmap thất bại", error=str(e))
-            return loi_vietmap(e, input_context)
+            return await fallback_db(
+                "find_nearby",
+                loi_vietmap(e, input_context),
+                lambda: _tu_db(query.strip(), near, lat, lng, radius_m, limit),
+            )
         except Exception as e:
             logger.error("find_nearby thất bại", error=str(e), exc_info=True)
             return format_mcp_tool_error_response(

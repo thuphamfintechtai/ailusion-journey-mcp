@@ -189,7 +189,13 @@ class VietmapClient:
             if r.status_code >= 400:
                 raise VietmapError(f"Vietmap từ chối tham số (HTTP {r.status_code}): {r.text[:200]}", r.status_code)
 
-            data = r.json()
+            try:
+                data = r.json()
+            except ValueError:
+                # 200 nhưng không phải JSON: coi như lỗi phía server, thử key khác.
+                logger.warning("Vietmap trả dữ liệu không phải JSON", status=r.status_code)
+                loi_cuoi, do_key = VietmapError("Vietmap trả dữ liệu không phải JSON", r.status_code), False
+                continue
             code = data.get("code") if isinstance(data, dict) else None
             if code in _CODE_HET_HAN_MUC:
                 self._cho_nghi(idx, self.rate_limit_cooldown, code)

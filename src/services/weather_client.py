@@ -110,8 +110,14 @@ class WeatherClient:
                 continue
 
             if r.status_code == 200:
+                try:
+                    data = r.json()
+                except ValueError:
+                    # 200 nhưng không phải JSON: coi như lỗi phía server, thử key khác.
+                    logger.warning("WeatherAPI trả dữ liệu không phải JSON", key=KeyPool.mask(key))
+                    loi_cuoi, do_key = WeatherError("WeatherAPI trả dữ liệu không phải JSON", 200), False
+                    continue
                 self.pool.mark_ok(idx)
-                data = r.json()
                 if self.cache_ttl > 0:
                     self._cache[khoa] = (self._clock(), data)
                     while len(self._cache) > _CACHE_TOI_DA:

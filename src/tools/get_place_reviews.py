@@ -7,8 +7,11 @@ from fastmcp import FastMCP
 from pydantic import Field
 
 from ..services.serpapi_client import SerpApiError, serpapi_client
+from ..services.travel_db import travel_db
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
+from ..utils.text import tach_tu
+from ._db_common import fallback_db, khop_du_tu_khoa
 from ._serpapi_common import khong_co_ket_qua, loi_serpapi, nhan_lua_chon
 
 logger = structlog.get_logger(__name__)
@@ -34,6 +37,35 @@ def _gon_review(r: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+async def _tu_db(place_id: str, sort_by: str, query: str | None) -> dict[str, Any] | None:
+    """Review đã lưu (vài review mỗi điểm) và phân bố số sao."""
+    p = await travel_db.find_place(place_id)
+    if not p:
+        return None
+    reviews = [r for r in p.get("reviews") or [] if isinstance(r, dict)]
+    toks = tach_tu(query)
+    if toks:
+        reviews = [r for r in reviews if khop_du_tu_khoa(toks, r.get("text"))]
+    if sort_by == "newest":
+        reviews.sort(key=lambda r: r.get("date") or "", reverse=True)
+    elif sort_by in ("highest", "lowest"):
+        reviews.sort(key=lambda r: r.get("rating") or 0, reverse=sort_by == "highest")
+    return {
+        "status": "success",
+        "place": drop_empty(
+            {"name": p.get("title"), "rating": p.get("rating"), "reviews": p.get("review_count"), "address": p.get("address")}
+        ),
+        "reviews_per_rating": p.get("reviews_per_rating"),
+        "returned": len(reviews),
+        "reviews": [
+            {"rating": r.get("rating"), "date": r.get("date"), "text": (r.get("text") or "")[:_DO_DAI_TOI_DA]}
+            for r in reviews
+        ],
+        "note": "Chỉ có vài review đã lưu cho mỗi địa điểm, không phân trang và không có `topics`.",
+        "data_as_of": str(p.get("fetched_at") or "")[:10] or None,
+    }
+
+
 def register_get_place_reviews_tool(mcp: FastMCP):
     @mcp.tool(
         name="get_place_reviews",
@@ -43,7 +75,8 @@ def register_get_place_reviews_tool(mcp: FastMCP):
             "và `topics` (cụm từ được nhắc nhiều kèm số lượt, VD 'đỗ xe', 'phục vụ').\n\n"
             "Khi nào dùng: kiểm chứng trải nghiệm thật (chặt chém, ồn, chỗ cho bé, đường "
             "dốc, đỗ ô tô...), hoặc lọc review theo chủ đề bằng `query`.\n"
-            "Mỗi trang ~8-20 review và tốn 1 lượt quota; mặc định chỉ lấy 1 trang."
+            "Mỗi trang ~8-20 review và tốn 1 lượt quota; mặc định chỉ lấy 1 trang. Khi SerpApi lỗi / "
+            "hết quota tool tự trả vài review đã lưu (`data_source`='ailusion_db')."
         ),
         tags={"journey", "serpapi", "reviews"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "serpapi:google_maps_reviews"},
@@ -125,7 +158,9 @@ def register_get_place_reviews_tool(mcp: FastMCP):
 
         except SerpApiError as e:
             logger.error("get_place_reviews gọi SerpApi thất bại", error=str(e))
-            return loi_serpapi(e, input_context)
+            return await fallback_db(
+                "get_place_reviews", loi_serpapi(e, input_context), lambda: _tu_db(place_id.strip(), sort_by, query)
+            )
         except Exception as e:
             logger.error("get_place_reviews thất bại", error=str(e), exc_info=True)
             return format_mcp_tool_error_response(

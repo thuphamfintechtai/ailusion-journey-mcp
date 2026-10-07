@@ -175,7 +175,15 @@ class SerpApiClient:
             else:
                 # Ghi nhớ key còn dùng được để lần sau thử nó trước.
                 self._idx = idx
-                data = response.json()
+                try:
+                    data = response.json()
+                except ValueError:
+                    # 200 nhưng không phải JSON (trang lỗi HTML của proxy / CDN): coi như lỗi
+                    # phía server để thử key khác, và để tool chạy được fallback.
+                    logger.warning("SerpApi trả dữ liệu không phải JSON", key=self._mask(key))
+                    loi_cuoi = SerpApiError("SerpApi trả dữ liệu không phải JSON", response.status_code)
+                    loi_do_key = False
+                    continue
                 if isinstance(data, dict) and data.get("error"):
                     # SerpApi trả 200 + "error" khi không có kết quả cho truy vấn.
                     logger.info(

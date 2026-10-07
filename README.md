@@ -190,7 +190,6 @@ Tool không dùng SerpApi (không tốn quota):
 |---|---|
 | `parse_money` | Đọc số tiền trong câu: '500k', '2tr5', '3 củ', '$50', '2-3 triệu/người' |
 | `convert_currency` | Đổi tiền theo tỷ giá Vietcombank (cache >= 5 phút), dự phòng tỷ giá thị trường |
-| `calc_trip_cost` | Cộng chi phí theo hạng mục, VAT / giá ++, xăng, phí cầu đường, dự phòng, so ngân sách |
 | `score_options` | Xếp hạng phương án bằng TOPSIS / tổng trọng số, nhiều bộ trọng số |
 | `export_itinerary` | Xuất lịch trình ra file `.ics` và link Google Maps |
 | `mask_pii` | Che SĐT, email, CCCD, số tài khoản, số thẻ, biển số trước khi lưu / ghi log |
@@ -201,6 +200,29 @@ Tool không dùng SerpApi (không tốn quota):
 | `list_admin_units` | Danh mục 34 tỉnh / thành và phường / xã hiện hành, kiểm tra tên có tồn tại |
 | `vn_calendar` | Ngày nghỉ lễ / nghỉ bù, âm lịch, lễ hội theo tỉnh, mức cao điểm. Cách mở rộng: [docs/VN_CALENDAR.md](docs/VN_CALENDAR.md) |
 | `convert_lunar_date` | Đổi ngày âm - dương lịch |
+
+Tool đọc dữ liệu đã cào sẵn trong Postgres (DB `MLAI-AILUSION`, cấu hình `PG_HOST`,
+`PG_USER`, `PG_PASSWORD`, `PG_DATA_DATABASE`; code ở `src/services/travel_db.py`), không tốn quota:
+
+| Tool | Bảng | Dùng cho |
+|---|---|---|
+| `browse_places` | `gmaps_place` | Duyệt địa điểm theo điểm đến / loại / rating / bán kính / xe lăn |
+| `check_opening_hours` | `gmaps_place.open_hours` | Nhiều điểm có mở vào giờ dự định không, đủ thời gian ở lại không |
+| `best_time_to_visit` | `gmaps_place.popular_times` | Giờ / ngày vắng khách nhất trong giờ mở cửa |
+| `find_festivals` | `event` | Lễ hội, sự kiện theo tỉnh (sau sáp nhập) và khoảng ngày |
+| `destination_snapshot` | cả 3 nhóm bảng | Tổng quan điểm đến: thời tiết, top địa điểm theo nhóm, lễ hội |
+| `find_stays` | `gmaps_place.summary` | Chỗ ở theo ngân sách / đêm (giá tham khảo lúc cào), loại, rating, bán kính, mặt bằng giá p25 / trung vị / p75 |
+| `find_places_by_needs` | `gmaps_place.attributes` | Địa điểm đáp ứng cùng lúc nhiều nhu cầu: xe lăn, trẻ em, ăn chay, đỗ ô tô, mang chó, Wi-Fi, lãng mạn, rooftop... (39 nhu cầu) |
+| `check_place_needs` | `attributes` + `attributes_not_available` | Rà từng điểm trong lịch trình: có / không / chưa rõ cho mỗi nhu cầu, kèm lưu ý (chỉ nhận tiền mặt, phải đặt chỗ, phí vào cổng) |
+| `compare_places` | `gmaps_place` | So sánh 2-10 điểm (rating hiệu chỉnh, % 1 sao, giá, mức đông, khoảng cách, nhu cầu), xuất sẵn đầu vào cho `score_options` |
+| `rating_insights` | `reviews_per_rating` + `reviews` | Rating có đáng tin không: phân bố sao, phân cực, xếp hạng trong cùng loại, độ mới, review điểm thấp |
+| `find_alternatives` | `gmaps_place` | Điểm thay thế cùng loại ở gần khi điểm cũ đóng cửa / quá đông / không đáp ứng nhu cầu |
+
+Cùng dữ liệu này làm **fallback**: khi API ngoài lỗi hoặc hết quota, `search_places`,
+`get_place_details`, `get_place_reviews` (SerpApi), `find_nearby` (Vietmap), `search_events`
+(Tavily), `search_hotels` (SerpApi, trả chỗ ở với giá tham khảo) và `weather_forecast` (WeatherAPI) tự trả dữ liệu đã lưu kèm `data_source: ailusion_db`,
+`fallback_reason`, `data_as_of`. DB không có dữ liệu khớp thì vẫn trả lỗi gốc. Tắt bằng
+`PG_FALLBACK_ENABLED=false`.
 
 Kiểm tra quota từng key (miễn phí):
 

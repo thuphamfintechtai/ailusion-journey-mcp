@@ -75,6 +75,22 @@ class Settings(BaseSettings):
     calendar_rules_file: str = Field(default="")
     calendar_overrides_dir: str = Field(default="")
 
+    # --- Postgres dữ liệu đã cào (Google Maps, lễ hội, thời tiết) ---
+    # Dùng làm nguồn chính cho các tool đọc DB và làm fallback khi SerpApi / Tavily /
+    # WeatherAPI / Vietmap lỗi. PG_DATABASE là DB của backend nên dữ liệu cào để riêng.
+    pg_host: str = Field(default="")
+    pg_port: int = Field(default=5432)
+    pg_user: str = Field(default="postgres")
+    pg_password: str = Field(default="")
+    pg_data_database: str = Field(default="MLAI-AILUSION")
+    pg_timeout: int = Field(default=10)  # giây, connect; truy vấn được gấp 3
+    pg_pool_max: int = Field(default=5)
+    # Danh sách địa điểm (bản rút gọn) giữ trong bộ nhớ, dữ liệu chỉ cào lại theo ngày.
+    pg_cache_ttl: int = Field(default=3600)
+    pg_fallback_enabled: bool = Field(default=True)
+    # Lỗi kết nối thì bỏ qua DB trong bấy nhiêu giây, tránh mỗi lần gọi chờ đủ timeout.
+    pg_retry_after: int = Field(default=60)
+
     # --- HTTP client ---
     http_timeout: int = Field(default=30)
     http_max_retries: int = Field(default=2)

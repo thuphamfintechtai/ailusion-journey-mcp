@@ -7,11 +7,51 @@ from fastmcp import FastMCP
 from pydantic import Field
 
 from ..services.serpapi_client import SerpApiError, serpapi_client
+from ..services.travel_db import travel_db
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
+from ._db_common import fallback_db, gon_dia_diem, loc_dia_diem, moi_nhat
 from ._serpapi_common import khong_co_ket_qua, loi_serpapi, tham_so_vn
 
 logger = structlog.get_logger(__name__)
+
+
+async def _tu_db(
+    query: str, lat: float | None, lng: float | None, zoom: int, min_rating: float | None, limit: int
+) -> dict[str, Any] | None:
+    """Tìm trong gmaps_place đã lưu: theo toạ độ nếu có, không thì theo điểm đến nhắc trong query."""
+    dest = await travel_db.find_destination(query)
+    # zoom 14 ~ cả quận (~5 km), mỗi mức zoom gấp đôi / chia đôi bán kính.
+    ban_kinh = 5 * 2 ** (14 - zoom) if lat is not None else None
+    ket_qua, khop_du = loc_dia_diem(
+        await travel_db.places(),
+        query=query,
+        destination_key=dest,
+        lat=lat,
+        lng=lng,
+        radius_km=ban_kinh,
+        min_rating=min_rating,
+    )
+    if not ket_qua:
+        return None
+    return {
+        "status": "success",
+        "query": query,
+        "total_found": len(ket_qua),
+        "places": [gon_dia_diem(p) for p in ket_qua[:limit]],
+        "data_as_of": moi_nhat(ket_qua),
+        "note": " ".join(
+            g
+            for g in (
+                None if khop_du else "Không có điểm khớp đủ mọi từ khoá, đã trả các điểm khớp một phần.",
+                None
+                if dest or lat is not None
+                else "Truy vấn không nêu khu vực nên kết quả gộp nhiều thành phố; xem `address`.",
+            )
+            if g
+        )
+        or None,
+    }
 
 
 def _gon_dia_diem(p: dict[str, Any]) -> dict[str, Any]:
@@ -46,7 +86,9 @@ def register_search_places_tool(mcp: FastMCP):
             "Khi nào KHÔNG dùng: khách sạn có giá phòng (dùng search_hotels). Cần giờ mở cửa "
             "từng ngày, giờ đông khách, thông tin tiếp cận xe lăn: gọi get_place_details với "
             "`place_id` lấy từ đây.\n\n"
-            "Mỗi lần gọi tốn 1 lượt quota, trả tối đa 20 địa điểm."
+            "Mỗi lần gọi tốn 1 lượt quota, trả tối đa 20 địa điểm. Khi SerpApi lỗi / hết quota tool "
+            "tự trả dữ liệu đã lưu (`data_source`='ailusion_db'); muốn duyệt dữ liệu đã lưu chủ động "
+            "(miễn phí) thì dùng browse_places."
         ),
         tags={"journey", "serpapi", "maps"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "serpapi:google_maps"},
@@ -105,7 +147,11 @@ def register_search_places_tool(mcp: FastMCP):
 
         except SerpApiError as e:
             logger.error("search_places gọi SerpApi thất bại", error=str(e))
-            return loi_serpapi(e, input_context)
+            return await fallback_db(
+                "search_places",
+                loi_serpapi(e, input_context),
+                lambda: _tu_db(query.strip(), lat, lng, zoom, min_rating, limit),
+            )
         except Exception as e:
             logger.error("search_places thất bại", error=str(e), exc_info=True)
             return format_mcp_tool_error_response(

@@ -115,8 +115,14 @@ class TavilyClient:
             elif r.status_code >= 400:
                 raise TavilyError(f"Tavily từ chối tham số: {_doc_loi(r)}", r.status_code)
             else:
+                try:
+                    data = r.json()
+                except ValueError:
+                    # 200 nhưng không phải JSON: coi như lỗi phía server, thử key khác.
+                    logger.warning("Tavily trả dữ liệu không phải JSON", status=r.status_code)
+                    loi_cuoi, do_key = TavilyError("Tavily trả dữ liệu không phải JSON", r.status_code), False
+                    continue
                 self.pool.mark_ok(idx)
-                data = r.json()
                 if self.cache_ttl > 0:
                     self._cache[khoa] = (self._clock(), data)
                     while len(self._cache) > _CACHE_TOI_DA:

@@ -8,9 +8,11 @@ import structlog
 from fastmcp import FastMCP
 from pydantic import Field
 
+from ..services.travel_db import travel_db
 from ..services.weather_client import WeatherError, WeatherPlanError, weather_client
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
+from ._db_common import fallback_db
 from ._serpapi_common import doc_ngay
 from ._weather_common import (
     GIO_DAI_DIEN,
@@ -68,6 +70,46 @@ def _gon_ngay(fd: dict[str, Any], nguon: str, chi_tiet_gio: bool) -> dict[str, A
     }
 
 
+async def _tu_db(
+    location: str | None, lat: float | None, lng: float | None, bd: date, kt: date
+) -> dict[str, Any] | None:
+    """Dự báo đã lưu (chỉ các điểm đến phổ biến, 7 ngày kể từ lần cào gần nhất)."""
+    kq = await travel_db.weather(location, lat, lng, bd, kt)
+    if not kq or not kq["days"]:
+        return None
+    ht = kq["current"]
+    co = {str(d.get("forecast_date")) for d in kq["days"]}
+    thieu = [(bd + timedelta(days=i)).isoformat() for i in range((kt - bd).days + 1)]
+    thieu = [d for d in thieu if d not in co]
+    return {
+        "status": "success",
+        "location": {"name": ht.get("destination"), "country": ht.get("country"), "lat": ht.get("lat"), "lon": ht.get("lon")},
+        "current": {
+            "observed_at": ht.get("observed_at"),
+            "temp_c": ht.get("temperature"),
+            "humidity_pct": ht.get("humidity"),
+            "wind_kph": ht.get("wind_speed"),
+            "condition": ht.get("weather_desc"),
+        },
+        "days": [
+            {
+                "date": d.get("forecast_date"),
+                "source": "cache_db",
+                "condition": d.get("weather_desc"),
+                "temp_min_c": d.get("temp_min"),
+                "temp_max_c": d.get("temp_max"),
+                "chance_of_rain_pct": d.get("precipitation_prob"),
+            }
+            for d in kq["days"]
+        ],
+        "notes": [
+            "Dữ liệu đã lưu chỉ có nhiệt độ, khả năng mưa và mô tả; không có UV, gió, cảnh báo, giờ mặt trời.",
+            *([f"Không có dự báo đã lưu cho: {', '.join(thieu)}."] if thieu else []),
+        ],
+        "data_as_of": str(kq["days"][0].get("fetched_at") or "")[:10] or None,
+    }
+
+
 def register_weather_forecast_tool(mcp: FastMCP):
     @mcp.tool(
         name="weather_forecast",
@@ -81,7 +123,9 @@ def register_weather_forecast_tool(mcp: FastMCP):
             "(độ tin cậy thấp, chỉ để tham khảo); ngày đã qua = số liệu thực tế. `source` của "
             "từng ngày cho biết loại nào.\n"
             "Khi nào dùng: chọn ngày đi, chuẩn bị đồ, quyết định hoạt động ngoài trời / trong nhà, "
-            "cảnh báo đường đèo khi mưa.\n\n" + MO_TA_VI_TRI + f" Khoảng tối đa {_TOI_DA_NGAY} ngày."
+            "cảnh báo đường đèo khi mưa.\n\n" + MO_TA_VI_TRI + f" Khoảng tối đa {_TOI_DA_NGAY} ngày. "
+            "Khi WeatherAPI lỗi / hết quota tool tự trả dự báo đã lưu của các điểm đến phổ biến "
+            "(`data_source`='ailusion_db', ít trường hơn)."
         ),
         tags={"journey", "weather"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "weatherapi:forecast,future,history"},
@@ -190,7 +234,9 @@ def register_weather_forecast_tool(mcp: FastMCP):
 
         except WeatherError as e:
             logger.error("weather_forecast gọi WeatherAPI thất bại", error=str(e))
-            return loi_thoi_tiet(e, input_context)
+            return await fallback_db(
+                "weather_forecast", loi_thoi_tiet(e, input_context), lambda: _tu_db(location, lat, lng, bd, kt)
+            )
         except Exception as e:
             logger.error("weather_forecast thất bại", error=str(e), exc_info=True)
             return format_mcp_tool_error_response(

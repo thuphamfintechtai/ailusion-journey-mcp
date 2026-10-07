@@ -11,6 +11,7 @@ from starlette.responses import JSONResponse
 from .auto_register import auto_register_all
 from .config.settings import settings
 from .services.http_client import close_http_clients
+from .services.travel_db import travel_db
 from .utils.logging import setup_logging
 
 # Setup logging trước mọi thứ khác
@@ -88,5 +89,7 @@ async def cleanup_services():
     try:
         await close_http_clients()
         logger.info("Đã đóng các HTTP client")
+        await travel_db.close()
+        logger.info("Đã đóng pool Postgres")
     except Exception as e:
         logger.error("Lỗi khi dọn dẹp services", error=str(e))
