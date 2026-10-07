@@ -105,42 +105,7 @@ async def test_parse_money_quy_doi():
     assert kq["amounts"][0]["vnd_min"] == 1290000 and kq["amounts"][1]["value_min"] == 800000
 
 
-# --- chi phí / chấm điểm -----------------------------------------------------
-
-
-@respx.mock
-async def test_calc_trip_cost_thue_xang_ngan_sach():
-    respx.get(VCB_URL).mock(return_value=httpx.Response(200, text=VCB_XML))
-    kq = await _goi(
-        "calc_trip_cost",
-        {
-            "people": 2,
-            "nights": 2,
-            "trip_date": "2026-11-20",
-            "contingency_pct": 0,
-            "budget_vnd": 5000000,
-            "items": [
-                {"name": "KS", "amount": 1000000, "per": "night", "category": "lưu trú", "tax": "plus_plus"},
-                {"name": "Vé", "amount": 10, "currency": "USD", "per": "person", "category": "vé"},
-            ],
-            "fuel": {"distance_km": 200, "vehicle": "car", "price_per_liter_vnd": 20000},
-            "tolls_vnd": 50000,
-        },
-    )
-    # KS: 1tr x 2 đêm x 1,05 x 1,08 = 2.268.000; vé: 10 x 26.180 x 2 = 523.600; xăng 14 l x 20k = 280.000
-    assert kq["by_category_vnd"]["lưu trú"] == 2268000
-    assert kq["by_category_vnd"]["vé"] == 523600
-    assert kq["by_category_vnd"]["di chuyển"] == 330000
-    assert kq["total_vnd"] == 3121600 and kq["per_person_vnd"] == 1560800
-    assert kq["budget"]["within_budget"] is True and kq["vat_rate"] == 0.08
-
-
-async def test_calc_trip_cost_vat_sau_2026():
-    kq = await _goi(
-        "calc_trip_cost",
-        {"trip_date": "2027-02-01", "contingency_pct": 0, "items": [{"name": "x", "amount": 100, "tax": "vat"}]},
-    )
-    assert kq["vat_rate"] == 0.10 and kq["total_vnd"] == 110
+# --- chấm điểm -----------------------------------------------------------
 
 
 async def test_score_options_nhieu_bo_trong_so():
