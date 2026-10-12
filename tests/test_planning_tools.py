@@ -334,4 +334,4 @@ async def test_disaster_alerts_loc_gan_viet_nam():
 async def test_disaster_alerts_khong_co_su_kien():
     respx.get(url__regex=r".*gdacs.*geteventlist.*").mock(return_value=httpx.Response(204))
     kq = await _goi("disaster_alerts", {"days": 3})
-    assert kq["events"] == [] and "local_news" in kq["note"]
+    assert kq["events"] == [] and "google_news" in kq["note"]

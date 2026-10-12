@@ -24,7 +24,7 @@ def register_fetch_page_tool(mcp: FastMCP):
         description=(
             "Đọc nội dung các trang web đã biết URL, trả về dạng markdown sạch.\n\n"
             "Khi nào dùng: cần đọc kỹ một bài báo / thông báo / bảng giá tìm được từ "
-            "web_search hoặc local_news. Truyền `focus` để chỉ lấy các đoạn liên quan "
+            "web_search hoặc google_news. Truyền `focus` để chỉ lấy các đoạn liên quan "
             "(VD 'giá vé người lớn', 'giờ mở cửa') thay vì cả trang — đỡ tốn token nhiều.\n\n"
             f"Tối đa {_TOI_DA_URL} URL mỗi lần, tốn 1 credit Tavily cho mỗi 5 URL."
         ),

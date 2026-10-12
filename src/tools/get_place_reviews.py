@@ -11,7 +11,7 @@ from ..services.travel_db import travel_db
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
 from ..utils.text import tach_tu
-from ._db_common import fallback_db, khop_du_tu_khoa
+from ._db_common import NGUON_DB, fallback_db, khop_du_tu_khoa
 from ._serpapi_common import khong_co_ket_qua, loi_serpapi, nhan_lua_chon
 
 logger = structlog.get_logger(__name__)
@@ -23,6 +23,8 @@ _SORT_BY = {
     "lowest": "ratingLow",
 }
 _DO_DAI_TOI_DA = 600  # ký tự mỗi review, đủ để trích khía cạnh mà không phình token
+# source="auto": DB có từ chừng này review (sau khi lọc `query`) thì dùng luôn, không tốn quota.
+DB_DU_REVIEW = 3
 
 
 def _gon_review(r: dict[str, Any]) -> dict[str, Any]:
@@ -76,7 +78,9 @@ def register_get_place_reviews_tool(mcp: FastMCP):
             "Khi nào dùng: kiểm chứng trải nghiệm thật (chặt chém, ồn, chỗ cho bé, đường "
             "dốc, đỗ ô tô...), hoặc lọc review theo chủ đề bằng `query`.\n"
             "Mỗi trang ~8-20 review và tốn 1 lượt quota; mặc định chỉ lấy 1 trang. Khi SerpApi lỗi / "
-            "hết quota tool tự trả vài review đã lưu (`data_source`='ailusion_db')."
+            "hết quota tool tự trả vài review đã lưu (`data_source`='ailusion_db').\n"
+            "`source`='auto': đọc review đã lưu trước, chỉ gọi SerpApi khi DB có dưới 3 review; "
+            "'db': chỉ đọc DB (không tốn quota)."
         ),
         tags={"journey", "serpapi", "reviews"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "serpapi:google_maps_reviews"},
@@ -104,11 +108,22 @@ def register_get_place_reviews_tool(mcp: FastMCP):
         pages: Annotated[
             int, Field(ge=1, le=3, description="Số trang review (mỗi trang tốn 1 lượt quota).")
         ] = 1,
+        source: Annotated[
+            Literal["live", "auto", "db"],
+            Field(description="'auto' (mặc định) đọc DB trước, thiếu mới gọi SerpApi; 'db' chỉ đọc DB; 'live' luôn gọi SerpApi."),
+        ] = "auto",
     ) -> dict[str, Any]:
         input_context = {"place_id": place_id, "query": query}
         try:
             if not place_id.strip():
                 return format_validation_error("place_id", place_id, "không được để trống")
+
+            if source != "live" and travel_db.enabled:
+                da_luu = await _tu_db(place_id.strip(), sort_by, query)
+                if da_luu and (source == "db" or da_luu["returned"] >= DB_DU_REVIEW):
+                    return drop_empty({**da_luu, "data_source": NGUON_DB})
+                if source == "db":
+                    return {"status": "success", "returned": 0, "reviews": [], "note": "DB chưa có review của chỗ này"}
 
             reviews: list[dict[str, Any]] = []
             topics: list[dict[str, Any]] = []

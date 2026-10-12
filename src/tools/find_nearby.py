@@ -63,7 +63,7 @@ def register_find_nearby_tool(mcp: FastMCP):
             "search_places / get_place_details (tốn quota) cho vài điểm trong danh sách ngắn.\n\n"
             "Vị trí tâm: truyền `lat`/`lng`, hoặc `near` là tên / địa chỉ (VD 'phố cổ Hội An').\n"
             "Trả về tối đa 10 điểm, `distance_km` tính từ tâm, `ref_id` dùng lại được cho "
-            "get_route / distance_matrix / optimize_route. Khi Vietmap lỗi / hết quota tool tự tìm trong "
+            "get_route / distance_matrix / plan_day_route. Khi Vietmap lỗi / hết quota tool tự tìm trong "
             "địa điểm Google Maps đã lưu (`data_source`='ailusion_db', không có `ref_id`)."
         ),
         tags={"journey", "vietmap", "maps"},

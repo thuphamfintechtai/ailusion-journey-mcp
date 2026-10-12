@@ -29,7 +29,7 @@ def register_get_route_tool(mcp: FastMCP):
             "Khi nào dùng: tính thời gian di chuyển giữa các điểm trong lịch trình, ước chi phí "
             "cầu đường cho chuyến tự lái.\n"
             "Khi nào KHÔNG dùng: so nhiều cặp điểm cùng lúc (dùng distance_matrix); muốn tìm "
-            "thứ tự đi tốt nhất (dùng optimize_route).\n\n" + MO_TA_DIEM
+            "thứ tự đi tốt nhất (dùng plan_day_route).\n\n" + MO_TA_DIEM
         ),
         tags={"journey", "vietmap", "routing"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "vietmap:route/v4"},

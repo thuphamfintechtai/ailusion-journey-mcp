@@ -383,19 +383,6 @@ class VietmapClient:
             ],
         )
 
-    async def tsp(self, diem: list[Diem], vehicle: str, roundtrip: bool, end_at_last: bool) -> dict[str, Any]:
-        return await self.get(
-            "/tsp/v4",
-            [
-                *(("point", d.latlng) for d in diem),
-                ("vehicle", vehicle),
-                ("roundtrip", "true" if roundtrip else "false"),
-                ("sources", "first"),
-                ("destinations", "last" if (end_at_last and not roundtrip) else None),
-                ("points_encoded", "false"),
-            ],
-        )
-
     async def close(self) -> None:
         if self._client is not None and not self._client.is_closed:
             await self._client.aclose()

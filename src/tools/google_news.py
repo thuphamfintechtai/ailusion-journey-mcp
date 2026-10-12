@@ -31,8 +31,8 @@ def register_google_news_tool(mcp: FastMCP):
         description=(
             "Tìm tin tức mới theo từ khoá trên Google Tin tức (Việt Nam, tiếng Việt), xếp mới "
             "nhất trước, có tên báo, ngày đăng và `source_type` (chinh_thong / bao_chi / khac).\n\n"
-            "Khi nào dùng: dự phòng cho local_news (khi hết lượt Tavily) hoặc khi cần quét "
-            "nhanh nhiều tin về một sự kiện cụ thể: 'cấm đường Đà Lạt', 'sạt lở đèo Prenn', "
+            "Khi nào dùng: tin địa phương gần đây (cấm đường, sạt lở, bão, quy định mới) hoặc "
+            "quét nhanh nhiều tin về một sự kiện cụ thể: 'cấm đường Đà Lạt', 'sạt lở đèo Prenn', "
             "'cấm biển Cô Tô', 'lễ hội pháo hoa Đà Nẵng'. Chỉ có tiêu đề, muốn đọc nội dung thì "
             "dùng fetch_page với `link`.\n"
             "Không tốn quota."

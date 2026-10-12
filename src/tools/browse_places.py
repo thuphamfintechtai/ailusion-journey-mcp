@@ -21,9 +21,10 @@ def register_browse_places_tool(mcp: FastMCP):
         title="Browse Saved Places (Duyệt địa điểm đã lưu)",
         description=(
             "Duyệt địa điểm Google Maps đã lưu sẵn (khách sạn, nhà hàng, quán cà phê, chùa, điểm tham "
-            "quan, spa, bar, công viên...) kèm rating, số review, mức giá, địa chỉ, toạ độ. Lọc theo "
-            "điểm đến, từ khoá, loại, rating tối thiểu, số review tối thiểu, tiếp cận xe lăn, hoặc bán "
-            "kính quanh một toạ độ.\n\n"
+            "quan, spa, bar, công viên...) kèm rating, `rating_adjusted` (hiệu chỉnh theo số review), số "
+            "review, mức giá (chuỗi gốc `price` và `price_vnd` đã quy ra VND), địa chỉ, toạ độ. Lọc theo "
+            "điểm đến, từ khoá, loại, rating tối thiểu, số review tối thiểu, tiếp cận xe lăn, khoảng giá "
+            "(`max_price_vnd` / `min_price_vnd`), hoặc bán kính quanh một toạ độ.\n\n"
             "Khi nào dùng: lập danh sách ứng viên nhanh và MIỄN PHÍ (không tốn quota) cho các điểm đến "
             "có dữ liệu; chọn top theo độ phổ biến. Chỉ có một số điểm đến (xem `available_destinations` "
             "khi không khớp).\n"
@@ -51,6 +52,24 @@ def register_browse_places_tool(mcp: FastMCP):
         min_rating: Annotated[float | None, Field(ge=0, le=5, description="Rating tối thiểu.")] = None,
         min_reviews: Annotated[int | None, Field(ge=0, description="Số review tối thiểu, lọc điểm ít người đánh giá.")] = None,
         wheelchair: Annotated[bool, Field(description="Chỉ lấy điểm có thông tin tiếp cận xe lăn.")] = False,
+        max_price_vnd: Annotated[
+            int | None,
+            Field(
+                ge=0,
+                description="Giá tối đa, VND: mỗi người với quán ăn / cà phê, mỗi đêm với chỗ ở. So với giá "
+                "ước tính (giữa khoảng giá Google Maps ghi, VD '100-200 N ₫' = 150.000).",
+            ),
+        ] = None,
+        min_price_vnd: Annotated[
+            int | None, Field(ge=0, description="Giá tối thiểu, VND, cùng cách tính với `max_price_vnd`.")
+        ] = None,
+        strict_price: Annotated[
+            bool,
+            Field(
+                description="Khi lọc giá: true = loại cả nơi chưa có giá; false (mặc định) = chỉ loại nơi có giá "
+                "nằm ngoài khoảng, giữ nơi chưa có giá (xem `price_vnd` từng nơi)."
+            ),
+        ] = False,
         sort_by: Annotated[
             Literal["popular", "rating", "distance"],
             Field(
@@ -70,6 +89,8 @@ def register_browse_places_tool(mcp: FastMCP):
                 return format_validation_error("destination", destination, "cần `destination` hoặc `lat`/`lng`")
             if sort_by == "distance" and lat is None:
                 return format_validation_error("sort_by", sort_by, "'distance' cần `lat`/`lng`")
+            if max_price_vnd is not None and min_price_vnd is not None and min_price_vnd > max_price_vnd:
+                return format_validation_error("min_price_vnd", min_price_vnd, "phải nhỏ hơn hoặc bằng `max_price_vnd`")
 
             dest, ghi_chu = await chon_diem_den(destination, co_toa_do=lat is not None)
             if lat is None:
@@ -96,6 +117,9 @@ def register_browse_places_tool(mcp: FastMCP):
                 min_reviews=min_reviews,
                 wheelchair=wheelchair,
                 sort_by=sort_by,
+                max_price_vnd=max_price_vnd,
+                min_price_vnd=min_price_vnd,
+                strict_price=strict_price,
             )
             return drop_empty(
                 {

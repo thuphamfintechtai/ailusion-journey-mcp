@@ -26,7 +26,7 @@ def register_distance_matrix_tool(mcp: FastMCP):
             "Khi nào dùng: chọn khách sạn gần các điểm tham quan nhất, lọc điểm quá xa, kiểm "
             "tra lịch trình có kịp giờ không, chuẩn bị dữ liệu cho bước lập phương án.\n"
             "Khi nào KHÔNG dùng: chỉ cần một tuyến (get_route) hoặc cần thứ tự đi tốt nhất "
-            "(optimize_route).\n\n"
+            "(plan_day_route).\n\n"
             f"Tối đa {_TOI_DA_DIEM} điểm (đi + đến). " + MO_TA_DIEM
         ),
         tags={"journey", "vietmap", "routing"},

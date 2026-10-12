@@ -192,6 +192,45 @@ async def test_get_place_details_gon_gio_dong_khach():
     assert kq["place"]["attributes"][0]["accessibility"] == ["Lối vào cho xe lăn"]
 
 
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("People typically spend 45 min to 1.5 hr here", {"low": 45, "high": 90}),
+        ("Mọi người thường dành 1-2 giờ ở đây", {"low": 60, "high": 120}),
+        ("Mọi người thường dành 15 phút ở đây", {"low": 15, "high": 15}),
+        ("People typically spend up to 1 hr here", {"low": 60, "high": 60}),
+        ("Mọi người thường dành 1,5 tiếng tới 3 tiếng ở đây", {"low": 90, "high": 180}),
+        ("không có số", None),
+        (None, None),
+    ],
+)
+def test_doc_thoi_gian_o_lai(text, expected):
+    from src.tools.get_place_details import thoi_gian_o_lai
+
+    assert thoi_gian_o_lai(text) == expected
+
+
+@respx.mock
+async def test_get_place_details_tra_thoi_gian_o_lai():
+    respx.get(SEARCH_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "place_results": {
+                    "title": "Chùa Cầu",
+                    "place_id": "p2",
+                    "popular_times": {
+                        "live_hash": {"time_spent": "Mọi người thường dành 30 phút đến 1 giờ ở đây"}
+                    },
+                }
+            },
+        )
+    )
+    kq = await _goi("get_place_details", {"place_id": "p2"})
+    assert kq["place"]["time_spent"] == "Mọi người thường dành 30 phút đến 1 giờ ở đây"
+    assert kq["place"]["stay_min"] == {"low": 30, "high": 60}
+
+
 @respx.mock
 async def test_get_place_reviews_nhieu_trang():
     trang = iter(
@@ -215,19 +254,6 @@ async def test_get_place_reviews_nhieu_trang():
     assert kq["topics"][0]["keyword"] == "đỗ xe"
     assert route.call_count == 2  # trang 2 hết token thì dừng
     assert route.calls.last.request.url.params["next_page_token"] == "t2"
-
-
-@respx.mock
-async def test_search_tripadvisor():
-    route = respx.get(SEARCH_URL).mock(
-        return_value=httpx.Response(
-            200, json={"places": [{"title": "Morning Glory", "rating": 4.5, "reviews": 9000}]}
-        )
-    )
-    kq = await _goi("search_tripadvisor", {"query": "Hoi An", "category": "restaurants"})
-
-    assert kq["places"][0]["name"] == "Morning Glory"
-    assert route.calls.last.request.url.params["ssrc"] == "r"
 
 
 @respx.mock

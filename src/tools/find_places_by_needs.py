@@ -26,7 +26,8 @@ def register_find_places_by_needs_tool(mcp: FastMCP):
             "sinh xe lăn, hỗ trợ khiếm thính), trẻ em (phù hợp trẻ em, ghế cao, sân chơi, thực đơn trẻ "
             "em), ăn uống (chay, thuần chay, đồ ăn khuya, bữa sáng), đi lại (đỗ ô tô, đỗ xe miễn phí), "
             "thanh toán thẻ, mang chó, Wi-Fi, làm việc laptop, không khí (lãng mạn, yên tĩnh, ấm cúng, "
-            "cao cấp), rooftop, nhạc sống, thân thiện LGBTQ+... Không tốn quota.\n\n"
+            "cao cấp), rooftop, nhạc sống, thân thiện LGBTQ+... Lọc thêm được theo khoảng giá "
+            "(`max_price_vnd` / `min_price_vnd`). Không tốn quota.\n\n"
             "Khi nào dùng: người dùng nêu ràng buộc cụ thể ('đi với bé 2 tuổi, cần chỗ đỗ ô tô', "
             "'quán chay lãng mạn', 'cà phê làm việc có Wi-Fi'). Kiểm tra một danh sách điểm đã chọn "
             "-> check_place_needs.\n\n"
@@ -51,6 +52,24 @@ def register_find_places_by_needs_tool(mcp: FastMCP):
         lng: Annotated[float | None, Field(ge=-180, le=180, description="Kinh độ tâm.")] = None,
         radius_km: Annotated[float, Field(gt=0, le=50, description="Bán kính quanh lat/lng, km.")] = 3,
         min_rating: Annotated[float | None, Field(ge=0, le=5, description="Rating tối thiểu.")] = None,
+        max_price_vnd: Annotated[
+            int | None,
+            Field(
+                ge=0,
+                description="Giá tối đa, VND: mỗi người với quán ăn / cà phê, mỗi đêm với chỗ ở. So với giá "
+                "ước tính (giữa khoảng giá Google Maps ghi, VD '100-200 N ₫' = 150.000).",
+            ),
+        ] = None,
+        min_price_vnd: Annotated[
+            int | None, Field(ge=0, description="Giá tối thiểu, VND, cùng cách tính với `max_price_vnd`.")
+        ] = None,
+        strict_price: Annotated[
+            bool,
+            Field(
+                description="Khi lọc giá: true = loại cả nơi chưa có giá; false (mặc định) = chỉ loại nơi có giá "
+                "nằm ngoài khoảng, giữ nơi chưa có giá (xem `price_vnd` từng nơi)."
+            ),
+        ] = False,
         strict_needs: Annotated[
             bool, Field(description="true = chỉ lấy nơi CHẮC CHẮN đáp ứng; false = chỉ loại nơi Google ghi rõ là không có.")
         ] = True,
@@ -71,6 +90,8 @@ def register_find_places_by_needs_tool(mcp: FastMCP):
                 return format_validation_error("destination", destination, "cần `destination` hoặc `lat`/`lng`")
             if sort_by == "distance" and lat is None:
                 return format_validation_error("sort_by", sort_by, "'distance' cần `lat`/`lng`")
+            if max_price_vnd is not None and min_price_vnd is not None and min_price_vnd > max_price_vnd:
+                return format_validation_error("min_price_vnd", min_price_vnd, "phải nhỏ hơn hoặc bằng `max_price_vnd`")
             nhu_cau = list(dict.fromkeys(needs))
 
             dest, ghi_chu_dest = await chon_diem_den(destination, co_toa_do=lat is not None)
@@ -96,6 +117,9 @@ def register_find_places_by_needs_tool(mcp: FastMCP):
                 category=category,
                 min_rating=min_rating,
                 sort_by=sort_by,
+                max_price_vnd=max_price_vnd,
+                min_price_vnd=min_price_vnd,
+                strict_price=strict_price,
             )
             dk, ts = dieu_kien_sql(nhu_cau, 2, chac_chan=strict_needs)
             bt, ts_bt = bieu_thuc_so_yes(nhu_cau, 2 + len(ts)) if not strict_needs else ("0", [])

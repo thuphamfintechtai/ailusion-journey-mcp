@@ -188,13 +188,43 @@ async def test_search_places_fallback_khong_khop_tra_loi_goc(db_gia, het_key_ser
 
 async def test_fallback_tat_thi_tra_loi_goc(db_gia, het_key_serpapi, monkeypatch):
     monkeypatch.setattr(settings, "pg_fallback_enabled", False)
-    kq = await _goi("get_place_details", {"place_id": "ChIJchua"})
+    kq = await _goi("get_place_details", {"place_id": "ChIJchua", "source": "live"})
     assert kq["status"] == "error" and db_gia == []
 
 
 async def test_get_place_reviews_fallback(db_gia, het_key_serpapi):
     kq = await _goi("get_place_reviews", {"place_id": "ChIJchua", "sort_by": "lowest"})
     assert kq["data_source"] == "ailusion_db" and kq["reviews"][0]["text"] == "Đông quá"
+
+
+async def test_get_place_reviews_source_db_khong_goi_serpapi(db_gia, het_key_serpapi):
+    kq = await _goi("get_place_reviews", {"place_id": "ChIJchua", "source": "db"})
+    assert kq["data_source"] == "ailusion_db" and "fallback_reason" not in kq
+
+
+async def test_get_place_reviews_auto_db_it_review_thi_goi_serpapi(db_gia, het_key_serpapi):
+    # DB chỉ có 1 review (< 3) -> thử SerpApi; hết key nên rơi về fallback, có `fallback_reason`.
+    kq = await _goi("get_place_reviews", {"place_id": "ChIJchua", "source": "auto"})
+    assert kq["data_source"] == "ailusion_db" and kq["fallback_reason"]
+
+
+async def test_get_place_reviews_auto_db_du_review(db_gia, het_key_serpapi, monkeypatch):
+    nhieu = [{"rating": 5, "text": f"review {i}"} for i in range(3)]
+    monkeypatch.setitem(CHI_TIET, "1", {**CHI_TIET["1"], "reviews": nhieu})
+    kq = await _goi("get_place_reviews", {"place_id": "ChIJchua", "source": "auto"})
+    assert kq["returned"] == 3 and "fallback_reason" not in kq
+
+
+async def test_get_place_details_auto_dung_thoi_gian_o_lai_da_luu(db_gia, het_key_serpapi, monkeypatch):
+    dong = {**DONG_KHACH, "live_hash": {"time_spent": "Mọi người thường dành 1-2 giờ ở đây"}}
+    monkeypatch.setitem(CHI_TIET, "1", {**CHI_TIET["1"], "popular_times": dong})
+    kq = await _goi("get_place_details", {"place_id": "ChIJchua", "source": "auto"})
+    assert kq["place"]["stay_min"] == {"low": 60, "high": 120} and "fallback_reason" not in kq
+
+
+async def test_get_place_details_auto_thieu_thoi_gian_o_lai_thi_goi_serpapi(db_gia, het_key_serpapi):
+    kq = await _goi("get_place_details", {"place_id": "ChIJchua", "source": "auto"})
+    assert kq["fallback_reason"]
 
 
 # --- edge case -------------------------------------------------------------------

@@ -42,7 +42,7 @@ def register_marine_forecast_tool(mcp: FastMCP):
             "Khi nào dùng: đi đảo (Côn Đảo, Phú Quốc, Cô Tô, Lý Sơn, Cù Lao Chàm, Nam Du), lặn "
             "ngắm san hô, tắm biển, chụp ảnh lúc nước ròng.\n"
             "Lưu ý: lệnh cấm biển / tàu ngưng chạy do chính quyền quyết định — kiểm tra thêm bằng "
-            "local_news. Dữ liệu biển có thể cần gói WeatherAPI cao hơn Free.\n\n" + MO_TA_VI_TRI
+            "google_news. Dữ liệu biển có thể cần gói WeatherAPI cao hơn Free.\n\n" + MO_TA_VI_TRI
         ),
         tags={"journey", "weather", "sea"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "weatherapi:marine"},

@@ -144,7 +144,6 @@ Tool đang dùng SerpApi:
 | `search_places` | `google_maps` | Tìm quán ăn, điểm tham quan, cây xăng... |
 | `get_place_details` | `google_maps` (`type=place`) | Giờ mở cửa, giờ đông khách, tiếp cận |
 | `get_place_reviews` | `google_maps_reviews` | Review và chủ đề được nhắc nhiều |
-| `search_tripadvisor` | `tripadvisor` | Rating đối chiếu, diễn đàn |
 
 Tool dùng Vietmap (bản đồ Việt Nam, cấu hình `VIETMAP_API_KEYS`, fallback và
 cache giống SerpApi, code ở `src/services/vietmap_client.py`). Đây là lựa chọn
@@ -157,8 +156,7 @@ rating, review, giờ mở cửa:
 | `geocode_vn` | `search/v4`, `reverse/v4` | Toạ độ, chuẩn hoá địa chỉ cũ <-> mới sau sáp nhập |
 | `get_route` | `route/v4` | Chỉ đường xe máy / ô tô / xe tải, phí cầu đường |
 | `distance_matrix` | `matrix/v4` | Thời gian, quãng đường giữa nhiều điểm |
-| `optimize_route` | `tsp/v4` | Sắp thứ tự đi các điểm cho ngắn nhất |
-| `plan_day_route` | `vrp` | Lộ trình trong ngày theo giờ mở cửa, thời gian tham quan, nghỉ trưa |
+| `plan_day_route` | `vrp` | Lộ trình trong ngày theo giờ mở cửa, thời gian tham quan, nghỉ trưa; truyền `date` thì tự lấy giờ mở cửa đã lưu, nhận cả place_id |
 | `elevation_profile` | `route/v4` + Open Topo Data | Độ cao, độ dốc dọc tuyến (đèo, xe máy, xe lăn / xe đẩy) |
 
 Tool dùng Tavily (tìm kiếm web, cấu hình `TAVILY_API_KEYS`, gói free 1.000
@@ -168,7 +166,6 @@ credit/tháng, code ở `src/services/tavily_client.py`). Mỗi kết quả có
 | Tool | Endpoint | Dùng cho |
 |---|---|---|
 | `web_search` | `search` | Kiểm chứng thông tin, tìm kinh nghiệm, phản biện |
-| `local_news` | `search` (`topic=news`) | Tin cấm đường, sạt lở, bão, quy định mới theo địa phương |
 | `fetch_page` | `extract` | Đọc một trang đã biết URL, lọc đoạn liên quan bằng `focus` |
 | `search_events` | `search` | Concert, festival, pháo hoa có ngày cụ thể |
 
@@ -206,13 +203,13 @@ Tool đọc dữ liệu đã cào sẵn trong Postgres (DB `MLAI-AILUSION`, cấ
 
 | Tool | Bảng | Dùng cho |
 |---|---|---|
-| `browse_places` | `gmaps_place` | Duyệt địa điểm theo điểm đến / loại / rating / bán kính / xe lăn |
+| `browse_places` | `gmaps_place` | Duyệt địa điểm theo điểm đến / loại / rating / bán kính / xe lăn / khoảng giá; trả kèm `price_vnd` và `rating_adjusted` |
 | `check_opening_hours` | `gmaps_place.open_hours` | Nhiều điểm có mở vào giờ dự định không, đủ thời gian ở lại không |
 | `best_time_to_visit` | `gmaps_place.popular_times` | Giờ / ngày vắng khách nhất trong giờ mở cửa |
 | `find_festivals` | `event` | Lễ hội, sự kiện theo tỉnh (sau sáp nhập) và khoảng ngày |
 | `destination_snapshot` | cả 3 nhóm bảng | Tổng quan điểm đến: thời tiết, top địa điểm theo nhóm, lễ hội |
 | `find_stays` | `gmaps_place.summary` | Chỗ ở theo ngân sách / đêm (giá tham khảo lúc cào), loại, rating, bán kính, mặt bằng giá p25 / trung vị / p75 |
-| `find_places_by_needs` | `gmaps_place.attributes` | Địa điểm đáp ứng cùng lúc nhiều nhu cầu: xe lăn, trẻ em, ăn chay, đỗ ô tô, mang chó, Wi-Fi, lãng mạn, rooftop... (39 nhu cầu) |
+| `find_places_by_needs` | `gmaps_place.attributes` | Địa điểm đáp ứng cùng lúc nhiều nhu cầu: xe lăn, trẻ em, ăn chay, đỗ ô tô, mang chó, Wi-Fi, lãng mạn, rooftop... (39 nhu cầu), lọc thêm theo khoảng giá |
 | `check_place_needs` | `attributes` + `attributes_not_available` | Rà từng điểm trong lịch trình: có / không / chưa rõ cho mỗi nhu cầu, kèm lưu ý (chỉ nhận tiền mặt, phải đặt chỗ, phí vào cổng) |
 | `compare_places` | `gmaps_place` | So sánh 2-10 điểm (rating hiệu chỉnh, % 1 sao, giá, mức đông, khoảng cách, nhu cầu), xuất sẵn đầu vào cho `score_options` |
 | `rating_insights` | `reviews_per_rating` + `reviews` | Rating có đáng tin không: phân bố sao, phân cực, xếp hạng trong cùng loại, độ mới, review điểm thấp |

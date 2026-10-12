@@ -1,19 +1,24 @@
-"""Test nhóm tool khai thác gmaps_place: chỗ ở theo ngân sách, nhu cầu, so sánh, rating, điểm thay thế.
+"""Test nhóm tool khai thác gmaps_place: chỗ ở theo ngân sách, nhu cầu, so sánh, rating, điểm thay thế,
+lọc theo giá, và plan_day_route tự lấy giờ mở cửa đã lưu.
 
 Không gọi DB thật: `fetch` trả dữ liệu giả; lọc nhu cầu bằng SQL được giả lập bằng danh_gia() (cùng
 luật), còn bản thân câu SQL được kiểm tra riêng ở test_dieu_kien_sql_*.
 """
 
 import asyncio
+import json
 import re
 from datetime import date, timedelta
 
+import httpx
 import pytest
+import respx
 from fastmcp import Client
 
 from src.config.settings import settings
 from src.services.serpapi_client import serpapi_client
 from src.services.travel_db import travel_db
+from src.services.vietmap_client import vietmap_client
 from src.tools._db_common import (
     doc_thoi_diem,
     gia_phong,
@@ -389,3 +394,141 @@ def test_bieu_thuc_so_yes_danh_so_noi_tiep():
     bt, tb = bieu_thuc_so_yes(["kids", "card_payment"], 2 + len(ts))
     so = sorted({int(x) for x in re.findall(r"\$(\d+)", f"{dk} {bt}")})
     assert so == list(range(2, 2 + len(ts) + len(tb)))
+
+
+
+# --- lọc giá, giá đã quy ra VND, rating hiệu chỉnh ----------------------------------
+
+
+async def test_browse_places_loc_gia_giu_noi_chua_co_gia(db):
+    kq = await _goi("browse_places", {"destination": "Huế", "category": "Nhà hàng", "max_price_vnd": 100000})
+    # Bún bò ~50k lọt, nhà hàng chay ~150k bị loại, Ốc Phân Cực chưa có giá vẫn được giữ.
+    assert sorted(p["name"] for p in kq["places"]) == ["Bún bò O Cương", "Ốc Phân Cực"]
+
+
+async def test_browse_places_loc_gia_chat_va_gia_toi_thieu(db):
+    kq = await _goi(
+        "browse_places", {"destination": "Huế", "category": "Nhà hàng", "max_price_vnd": 100000, "strict_price": True}
+    )
+    assert [p["name"] for p in kq["places"]] == ["Bún bò O Cương"]
+    kq = await _goi(
+        "browse_places", {"destination": "Huế", "category": "Nhà hàng", "min_price_vnd": 100000, "strict_price": True}
+    )
+    assert [p["name"] for p in kq["places"]] == ["Nhà hàng Chay Liên Hoa"]
+
+
+async def test_browse_places_khoang_gia_nguoc_bao_loi(db):
+    kq = await _goi("browse_places", {"destination": "Huế", "min_price_vnd": 200000, "max_price_vnd": 100000})
+    assert kq["status"] == "error"
+
+
+async def test_browse_places_tra_gia_vnd_va_rating_hieu_chinh(db):
+    kq = await _goi("browse_places", {"destination": "Huế", "query": "Liên Hoa"})
+    chay = kq["places"][0]
+    assert chay["price"] == "100-200 N ₫"
+    assert chay["price_vnd"] == {"kind": "per_person", "min_vnd": 100000, "max_vnd": 200000, "vnd": 150000}
+    assert chay["rating_adjusted"] == rating_hieu_chinh(4.6, 700)
+
+
+async def test_find_places_by_needs_loc_gia(db):
+    kq = await _goi("find_places_by_needs", {"destination": "Huế", "needs": ["vegetarian"], "max_price_vnd": 100000})
+    assert kq["places"] == []
+    kq = await _goi("find_places_by_needs", {"destination": "Huế", "needs": ["vegetarian"], "max_price_vnd": 200000})
+    assert [p["name"] for p in kq["places"]] == ["Nhà hàng Chay Liên Hoa"]
+
+
+# --- plan_day_route tự lấy giờ mở cửa và toạ độ đã lưu --------------------------------
+
+
+@pytest.fixture
+def vietmap(monkeypatch):
+    monkeypatch.setattr(vietmap_client, "api_keys", ["v1"])
+    monkeypatch.setattr(vietmap_client, "_nghi_den", {})
+    vietmap_client._cache.clear()
+
+
+def _vrp_tra(*steps, unassigned=()):
+    return httpx.Response(
+        200,
+        json={
+            "code": 0,
+            "summary": {"duration": 900, "distance": 6000},
+            "unassigned": [{"id": i} for i in unassigned],
+            "routes": [{"steps": list(steps)}],
+        },
+    )
+
+
+@respx.mock
+async def test_plan_day_route_lay_gio_mo_cua_da_luu(db, vietmap, monkeypatch):
+    # Thứ Bảy 2026-10-10: chùa Diệu Đế đóng cửa, chùa Thiên Mụ mở 07:00–17:00.
+    monkeypatch.setitem(CHI_TIET, "c3", {**CHI_TIET["c3"], "open_hours": {**GIO, "Thứ Bảy": ["Đóng cửa"]}})
+    route = respx.post(f"{vietmap_client.base_url}/vrp").mock(
+        return_value=_vrp_tra(
+            {"type": "start", "arrival": 28800, "duration": 0, "distance": 0},
+            {"type": "job", "id": 1, "arrival": 29400, "duration": 600, "distance": 3000, "service": 3600},
+            {"type": "job", "id": 3, "arrival": 33600, "duration": 900, "distance": 4500, "service": 1800},
+            {"type": "end", "arrival": 36300, "duration": 1200, "distance": 6000},
+        )
+    )
+    kq = await _goi(
+        "plan_day_route",
+        {
+            "start": "16.46,107.59",
+            "date": "2026-10-10",
+            "stops": [
+                {"place": "ChIJc1", "visit_minutes": 60},
+                {"place": "ChIJc3", "visit_minutes": 45},
+                {"place": "16.47,107.60", "visit_minutes": 30},
+            ],
+        },
+    )
+    gui = json.loads(route.calls.last.request.read())
+    # Toạ độ lấy từ DB (không gọi Vietmap tra tên); khung giờ = [mở, đóng - thời gian ở lại].
+    assert [j["id"] for j in gui["jobs"]] == [1, 3]
+    assert gui["jobs"][0]["location"] == [107.5448, 16.4532]
+    assert gui["jobs"][0]["time_windows"] == [[7 * 3600, 17 * 3600 - 3600]]
+    assert "time_windows" not in gui["jobs"][1]
+    assert kq["points"][1]["label"] == "Chùa Thiên Mụ"
+    assert kq["unassigned"] == [
+        {"stop_index": 1, "place": "Chùa Diệu Đế", "reason": "đóng cửa vào Thứ Bảy (theo giờ mở cửa đã lưu)"}
+    ]
+    gio = {g["place"]: g.get("hours_that_day") for g in kq["opening_hours_used"]}
+    assert gio == {"Chùa Thiên Mụ": "07:00–17:00", "Chùa Diệu Đế": "Đóng cửa"}
+
+
+@respx.mock
+async def test_plan_day_route_giu_open_close_truyen_vao(db, vietmap):
+    route = respx.post(f"{vietmap_client.base_url}/vrp").mock(
+        return_value=_vrp_tra(
+            {"type": "start", "arrival": 28800, "duration": 0, "distance": 0},
+            {"type": "end", "arrival": 29000, "duration": 200, "distance": 1000},
+            unassigned=[1],
+        )
+    )
+    await _goi(
+        "plan_day_route",
+        {
+            "start": "16.46,107.59",
+            "date": "2026-10-10",
+            "stops": [{"place": "ChIJc1", "open": "09:00", "close": "10:00", "visit_minutes": 30}],
+        },
+    )
+    gui = json.loads(route.calls.last.request.read())
+    assert gui["jobs"][0]["time_windows"] == [[9 * 3600, 10 * 3600 - 1800]]
+
+
+@respx.mock
+async def test_plan_day_route_place_id_khong_co_trong_db(db, vietmap):
+    kq = await _goi("plan_day_route", {"start": "16.46,107.59", "stops": [{"place": "ChIJkhongco"}]})
+    assert kq["status"] == "error" and "ChIJkhongco" in str(kq)
+
+
+async def test_plan_day_route_place_id_khi_tat_db():
+    kq = await _goi("plan_day_route", {"start": "16.46,107.59", "stops": [{"place": "ChIJc1"}]})
+    assert kq["status"] == "error"
+
+
+async def test_plan_day_route_ngay_sai():
+    kq = await _goi("plan_day_route", {"start": "1,2", "date": "10/10/2026", "stops": [{"place": "3,4"}]})
+    assert kq["status"] == "error"

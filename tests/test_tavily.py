@@ -109,28 +109,6 @@ async def test_web_search_mac_dinh_uu_tien_vn():
 
 
 @respx.mock
-async def test_local_news_sap_moi_nhat_truoc():
-    route = respx.post(f"{BASE}/search").mock(
-        return_value=httpx.Response(
-            200,
-            json={
-                "results": [
-                    {"title": "cũ", "url": "https://vnexpress.net/1", "published_date": "Fri, 11 Sep 2026 15:55:22 GMT"},
-                    {"title": "không ngày", "url": "https://x.com/2"},
-                    {"title": "mới", "url": "https://tuoitre.vn/3", "published_date": "Wed, 23 Sep 2026 10:01:00 GMT"},
-                ]
-            },
-        )
-    )
-    kq = await _goi("local_news", {"location": "Đà Lạt", "days": 10})
-
-    assert [t["title"] for t in kq["news"]] == ["mới", "cũ", "không ngày"]
-    body = json.loads(route.calls.last.request.content)
-    assert body["topic"] == "news" and body["include_domains_mode"] == "prefer"
-    assert body["start_date"] == (date.today() - timedelta(days=10)).isoformat()
-
-
-@respx.mock
 async def test_fetch_page_cat_noi_dung_va_bao_loi():
     route = respx.post(f"{BASE}/extract").mock(
         return_value=httpx.Response(

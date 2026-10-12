@@ -6,7 +6,6 @@ import respx
 from fastmcp import Client
 
 from src.services.vietmap_client import Diem, VietmapClient, VietmapError, vietmap_client
-from src.tools.optimize_route import thu_tu_tu_snapped
 
 BASE = vietmap_client.base_url
 
@@ -115,16 +114,6 @@ async def test_resolve_khong_thay():
     assert e.value.code == "NOT_FOUND"
 
 
-def test_thu_tu_tu_snapped():
-    diem = [Diem(10.0, 106.0, "A"), Diem(10.3, 106.3, "B"), Diem(10.1, 106.1, "C")]
-    # đi A -> C -> B, roundtrip lặp lại A ở cuối
-    snapped = [[106.0001, 10.0001], [106.1002, 10.0998], [106.2999, 10.3001], [106.0, 10.0]]
-    assert thu_tu_tu_snapped(diem, snapped) == [0, 2, 1]
-
-
-# --- tool --------------------------------------------------------------------
-
-
 async def _goi(ten, args):
     from src.fastmcp_server import mcp
 
@@ -229,30 +218,6 @@ async def test_distance_matrix_nguon_dich():
     ]
     p = route.calls.last.request.url.params
     assert p["sources"] == "0" and p["destinations"] == "1;2"
-
-
-@respx.mock
-async def test_optimize_route_tra_thu_tu():
-    respx.get(f"{BASE}/tsp/v4").mock(
-        return_value=httpx.Response(
-            200,
-            json={
-                "code": "OK",
-                "paths": [
-                    {
-                        "distance": 5491.7,
-                        "time": 667938,
-                        "snapped_waypoints": {"coordinates": [[106.0, 10.0], [106.2, 10.2], [106.1, 10.1]]},
-                    }
-                ],
-            },
-        )
-    )
-    kq = await _goi(
-        "optimize_route", {"points": ["10.0,106.0", "10.1,106.1", "10.2,106.2"], "return_to_start": False}
-    )
-    assert kq["order"] == [0, 2, 1]
-    assert kq["total_distance_km"] == 5.49
 
 
 @respx.mock

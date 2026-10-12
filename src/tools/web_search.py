@@ -24,7 +24,7 @@ def register_web_search_tool(mcp: FastMCP):
             "`source_type` (chinh_thong = trang .gov.vn, bao_chi = báo có giấy phép, khac).\n\n"
             "Khi nào dùng: kiểm chứng thông tin (giá vé tham quan, quy định, giờ mở cửa mới), "
             "tìm kinh nghiệm / blog, phản biện một nhận định. Mặc định ưu tiên kết quả Việt Nam.\n"
-            "Khi nào KHÔNG dùng: tin tức thời sự gần đây theo địa phương (dùng local_news); "
+            "Khi nào KHÔNG dùng: tin tức thời sự gần đây theo địa phương (dùng google_news); "
             "đọc kỹ một trang đã biết URL (dùng fetch_page).\n\n"
             "Chi phí: depth 'basic' 1 credit, 'advanced' 2 credit (quota 1.000 credit/tháng)."
         ),

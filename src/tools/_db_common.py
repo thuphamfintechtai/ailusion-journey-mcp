@@ -155,6 +155,9 @@ def loc_dia_diem(
     min_reviews: int | None = None,
     wheelchair: bool = False,
     sort_by: str = "popular",
+    max_price_vnd: int | None = None,
+    min_price_vnd: int | None = None,
+    strict_price: bool = False,
 ) -> tuple[list[dict[str, Any]], bool]:
     """Lọc + xếp hạng. Trả (danh sách, khớp_đủ). khớp_đủ=False nghĩa là không điểm nào
     chứa đủ mọi từ khoá nên đã nới ra các điểm khớp một phần."""
@@ -173,6 +176,10 @@ def loc_dia_diem(
         if loai and not khop_du_tu_khoa(loai, p.get("category")):
             continue
         if wheelchair and not p.get("wheelchair"):
+            continue
+        if (max_price_vnd is not None or min_price_vnd is not None) and not trong_khoang_gia(
+            p, max_price_vnd, min_price_vnd, strict_price
+        ):
             continue
         kc = None
         if lat is not None and lng is not None:
@@ -213,8 +220,10 @@ def gon_dia_diem(p: dict[str, Any]) -> dict[str, Any]:
         "place_id": p.get("place_id"),
         "category": p.get("category"),
         "rating": p.get("rating") or None,  # 0 sao + 0 review = chưa có đánh giá
+        "rating_adjusted": rating_hieu_chinh(p.get("rating"), p.get("review_count")),
         "reviews": p.get("review_count"),
         "price": p.get("price_range"),
+        "price_vnd": gia_uoc_tinh(p),
         "address": p.get("address"),
         "lat": p.get("lat"),
         "lng": p.get("lng"),
@@ -415,6 +424,21 @@ def gia_uoc_tinh(p: dict[str, Any]) -> dict[str, Any] | None:
         lo, hi = kg
         return {"kind": "per_person", "min_vnd": lo, "max_vnd": hi, "vnd": (lo + hi) // 2 if hi else lo}
     return None
+
+
+def trong_khoang_gia(
+    p: dict[str, Any], toi_da: int | None, toi_thieu: int | None, chac_chan: bool = False
+) -> bool:
+    """Giá ước tính (quán: giữa khoảng giá / người; chỗ ở: giá / đêm) nằm trong [toi_thieu, toi_da].
+
+    Nơi chưa có giá được giữ lại, vì không biết là vượt ngân sách; `chac_chan` (strict_price) thì loại.
+    """
+    gia = gia_uoc_tinh(p)
+    if gia is None:
+        return not chac_chan
+    if toi_da is not None and gia["vnd"] > toi_da:
+        return False
+    return not (toi_thieu is not None and gia["vnd"] < toi_thieu)
 
 
 # Rating trung bình toàn bộ dữ liệu, dùng làm "giá trị tiên nghiệm" cho rating hiệu chỉnh.

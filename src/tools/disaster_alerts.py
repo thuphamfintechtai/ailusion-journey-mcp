@@ -60,7 +60,7 @@ def register_disaster_alerts_tool(mcp: FastMCP):
             "điểm đến, link báo cáo.\n\n"
             "Khi nào dùng: trước chuyến đi biển / đảo / miền Trung mùa bão (tháng 8-12), khi "
             "weather_forecast báo gió mạnh, mưa to. GDACS chỉ có sự kiện quy mô lớn; tin cấm đường, "
-            "sạt lở cục bộ, công điện của Ban Chỉ đạo thì dùng local_news.\n"
+            "sạt lở cục bộ, công điện của Ban Chỉ đạo thì dùng google_news.\n"
             "Không tốn quota."
         ),
         tags={"journey", "weather", "safety"},
@@ -136,7 +136,7 @@ def register_disaster_alerts_tool(mcp: FastMCP):
                     "note": None
                     if ds
                     else f"Không có cảnh báo thiên tai quy mô lớn gần Việt Nam trong {days} ngày qua (GDACS). "
-                    "Vẫn nên kiểm tra local_news cho sạt lở, cấm đường cục bộ.",
+                    "Vẫn nên kiểm tra google_news cho sạt lở, cấm đường cục bộ.",
                 }
             )
 
