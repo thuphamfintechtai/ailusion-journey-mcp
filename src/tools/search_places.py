@@ -69,6 +69,7 @@ def _gon_dia_diem(p: dict[str, Any]) -> dict[str, Any]:
         "phone": p.get("phone"),
         "website": p.get("website"),
         "service_options": p.get("service_options"),
+        "thumbnail": p.get("thumbnail"),
     }
 
 

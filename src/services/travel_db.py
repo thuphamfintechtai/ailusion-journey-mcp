@@ -100,7 +100,7 @@ _TU_PHU_DIA_DANH = {"city", "thanh", "pho", "tp", "tinh", "province", "vietnam",
 _COT_RUT_GON = (
     "cid, place_id, destination, seed_query, best_match, title, category, address, lat, lng, "
     "rating, review_count, price_range, left(summary, 200) AS summary, website, phone, "
-    "attributes::text ILIKE '%xe lăn%' AS wheelchair, fetched_at"
+    "thumbnail, attributes::text ILIKE '%xe lăn%' AS wheelchair, fetched_at"
 )
 
 
@@ -468,6 +468,37 @@ class TravelDb:
                 r = {**r, "_other_matches": cung_hang[i]}
             ket_qua.append(r)
         return ket_qua
+
+    async def save_thumbnail(self, id_: str, url: str) -> int:
+        """Ghi ảnh đại diện cho địa điểm (theo place_id hoặc cid) chưa có ảnh. Trả số dòng đã ghi."""
+        rows = await self.fetch(
+            "UPDATE gmaps_place SET thumbnail = $1, updated_at = now() "
+            "WHERE (place_id = $2 OR cid = $2) AND thumbnail IS NULL RETURNING cid",
+            url,
+            id_,
+        )
+        # Sửa luôn bản rút gọn đang cache để browse_places không phải chờ hết TTL mới thấy ảnh.
+        for p in self._cache.get("places") or []:
+            if id_ in (p.get("place_id"), p.get("cid")) and not p.get("thumbnail"):
+                p["thumbnail"] = url
+        return len(rows)
+
+    async def save_images(self, id_: str, urls: list[str]) -> int:
+        """Ghi tối đa 6 URL ảnh cho địa điểm (place_id hoặc cid) chưa có hoặc có dưới 3 ảnh."""
+        ds = list(dict.fromkeys(u for u in urls if isinstance(u, str) and u))[:6]
+        if not ds:
+            return 0
+        rows = await self.fetch(
+            "UPDATE gmaps_place SET images = $1::jsonb, updated_at = now() "
+            "WHERE (place_id = $2 OR cid = $2) AND (images IS NULL OR jsonb_array_length(images) < 3) "
+            "RETURNING cid",
+            ds,
+            id_,
+        )
+        for p in self._cache.get("places") or []:
+            if "images" in p and id_ in (p.get("place_id"), p.get("cid")) and len(p.get("images") or []) < 3:
+                p["images"] = ds
+        return len(rows)
 
     async def details_by_cid(self, cids: list[str], columns: str) -> dict[str, dict[str, Any]]:
         """{cid: các cột yêu cầu} cho nhiều địa điểm trong một truy vấn."""

@@ -277,3 +277,25 @@ async def test_khong_co_ket_qua_van_success():
     assert kq["status"] == "success"
     assert kq["places"] == []
     assert "returned any results" in kq["note"]
+
+
+@respx.mock
+async def test_get_place_reviews_giu_anh_review_toi_da_4():
+    anh = [f"https://lh5.googleusercontent.com/a{i}" for i in range(6)]
+    respx.get(SEARCH_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "reviews": [
+                    {"rating": 5, "snippet": "đẹp", "images": [*anh, anh[0]]},
+                    {"rating": 4, "snippet": "ổn", "images": [{"thumbnail": "https://x/t.jpg"}]},
+                    {"rating": 3, "snippet": "thường"},
+                ]
+            },
+        )
+    )
+    kq = await _goi("get_place_reviews", {"place_id": "p1"})
+
+    assert kq["reviews"][0]["images"] == anh[:4]
+    assert kq["reviews"][1]["images"] == ["https://x/t.jpg"]
+    assert "images" not in kq["reviews"][2]

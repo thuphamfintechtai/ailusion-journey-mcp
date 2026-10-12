@@ -17,6 +17,29 @@ from ._serpapi_common import khong_co_ket_qua, loi_serpapi, tham_so_vn
 logger = structlog.get_logger(__name__)
 
 
+SO_ANH_TOI_DA = 6
+
+
+def anh_serpapi(p: dict[str, Any]) -> list[str] | None:
+    """Tối đa 6 URL ảnh của place_results SerpApi: `images[].thumbnail`; SerpApi nay thường không
+    trả `images` nữa thì lấy ảnh khách chụp trong `user_reviews.most_relevant[].images` (lần lượt
+    mỗi review một ảnh cho đa dạng). Chỉ lấy link ảnh, không lấy tên người viết."""
+    ds = [a.get("thumbnail") for a in p.get("images") or [] if isinstance(a, dict) and a.get("thumbnail")]
+    if len(ds) < SO_ANH_TOI_DA:
+        theo_review = [
+            [a.get("thumbnail") for a in r.get("images") or [] if isinstance(a, dict) and a.get("thumbnail")]
+            for r in (p.get("user_reviews") or {}).get("most_relevant") or []
+            if isinstance(r, dict)
+        ]
+        for vong in range(max((len(x) for x in theo_review), default=0)):
+            for anh in theo_review:
+                if vong < len(anh) and anh[vong] not in ds:
+                    ds.append(anh[vong])
+            if len(ds) >= SO_ANH_TOI_DA:
+                break
+    return ds[:SO_ANH_TOI_DA] or None
+
+
 def _gon_gio_dong_khach(popular_times: dict[str, Any] | None) -> dict[str, Any] | None:
     """Rút `popular_times` về {thứ: [[giờ, mức đông 0-100], ...]} bỏ giờ đóng cửa."""
     if not popular_times:
@@ -80,6 +103,19 @@ def _tim_time_spent(du_lieu: Any) -> str | None:
     return None
 
 
+async def _ghi_anh(id_: str, thumbnail: str | None, images: list[str] | None) -> None:
+    """Lưu ảnh vừa lấy từ SerpApi vào DB để lần sau đọc DB là đủ ảnh. Lỗi chỉ ghi log."""
+    if not travel_db.enabled or not (thumbnail or images):
+        return
+    try:
+        if images:
+            await travel_db.save_images(id_, images)
+        if thumbnail:
+            await travel_db.save_thumbnail(id_, thumbnail)
+    except Exception as e:  # noqa: BLE001 — ghi ảnh hỏng không làm hỏng kết quả
+        logger.warning("get_place_details không ghi được ảnh vào DB", error=str(e))
+
+
 async def _tu_db(place_id: str) -> dict[str, Any] | None:
     p = await travel_db.find_place(place_id)
     if not p:
@@ -105,6 +141,7 @@ async def _tu_db(place_id: str) -> dict[str, Any] | None:
             "gps": {"latitude": p["lat"], "longitude": p["lng"]} if p.get("lat") is not None else None,
             "phone": p.get("phone"),
             "website": p.get("website"),
+            "maps_url": p.get("maps_url"),
             "hours": p.get("open_hours"),
             "popular_times": {"by_day": dong_khach} if dong_khach else None,
             "time_spent": _tim_time_spent(p.get("popular_times")),
@@ -112,6 +149,8 @@ async def _tu_db(place_id: str) -> dict[str, Any] | None:
             "attributes": p.get("attributes"),
             "attributes_not_available": p.get("attributes_not_available"),
             "description": p.get("description") or p.get("summary"),
+            "thumbnail": p.get("thumbnail"),
+            "images": [u for u in p.get("images") or [] if isinstance(u, str) and u][:SO_ANH_TOI_DA] or None,
         },
         "other_matches": p.get("_other_matches"),
         "data_as_of": str(p.get("fetched_at") or "")[:10] or None,
@@ -171,6 +210,9 @@ def register_get_place_details_tool(mcp: FastMCP):
                     {"status": "success", "place_id": place_id, "place": None, "note": ghi_chu or "Không tìm thấy địa điểm"}
                 )
 
+            anh = anh_serpapi(p)
+            await _ghi_anh(place_id.strip(), p.get("thumbnail"), anh)
+
             return drop_empty(
                 {
                     "status": "success",
@@ -196,6 +238,8 @@ def register_get_place_details_tool(mcp: FastMCP):
                         ),
                         "attributes": p.get("extensions"),
                         "description": p.get("description"),
+                        "thumbnail": p.get("thumbnail"),
+                        "images": anh,
                         "review_topics": [
                             {"keyword": t.get("keyword"), "mentions": t.get("mentions")}
                             for t in (p.get("user_reviews") or {}).get("summary") or []

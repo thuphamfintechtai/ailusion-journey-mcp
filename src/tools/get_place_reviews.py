@@ -25,6 +25,17 @@ _SORT_BY = {
 _DO_DAI_TOI_DA = 600  # ký tự mỗi review, đủ để trích khía cạnh mà không phình token
 # source="auto": DB có từ chừng này review (sau khi lọc `query`) thì dùng luôn, không tốn quota.
 DB_DU_REVIEW = 3
+SO_ANH_REVIEW = 4
+
+
+def anh_review(r: dict[str, Any]) -> list[str] | None:
+    """Tối đa 4 URL ảnh khách đăng kèm review (SerpApi trả chuỗi URL hoặc {thumbnail/image})."""
+    ds: list[str] = []
+    for a in r.get("images") or []:
+        url = a if isinstance(a, str) else (a.get("thumbnail") or a.get("image")) if isinstance(a, dict) else None
+        if url and url not in ds:
+            ds.append(url)
+    return ds[:SO_ANH_REVIEW] or None
 
 
 def _gon_review(r: dict[str, Any]) -> dict[str, Any]:
@@ -36,6 +47,7 @@ def _gon_review(r: dict[str, Any]) -> dict[str, Any]:
         "likes": r.get("likes") or None,
         "details": r.get("details"),
         "owner_replied": bool(r.get("response")) or None,
+        "images": anh_review(r),
     }
 
 
@@ -60,7 +72,12 @@ async def _tu_db(place_id: str, sort_by: str, query: str | None) -> dict[str, An
         "reviews_per_rating": p.get("reviews_per_rating"),
         "returned": len(reviews),
         "reviews": [
-            {"rating": r.get("rating"), "date": r.get("date"), "text": (r.get("text") or "")[:_DO_DAI_TOI_DA]}
+            {
+                "rating": r.get("rating"),
+                "date": r.get("date"),
+                "text": (r.get("text") or "")[:_DO_DAI_TOI_DA],
+                "images": anh_review(r),
+            }
             for r in reviews
         ],
         "note": "Chỉ có vài review đã lưu cho mỗi địa điểm, không phân trang và không có `topics`.",

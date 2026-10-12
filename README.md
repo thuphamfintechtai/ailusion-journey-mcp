@@ -142,7 +142,8 @@ Tool đang dùng SerpApi:
 | `search_flights` | `google_flights` | Vé máy bay một chiều / khứ hồi |
 | `find_airports` | bảng nội bộ VN, `google_flights_autocomplete` | Tra mã IATA từ tên thành phố / điểm đến |
 | `search_places` | `google_maps` | Tìm quán ăn, điểm tham quan, cây xăng... |
-| `get_place_details` | `google_maps` (`type=place`) | Giờ mở cửa, giờ đông khách, tiếp cận |
+| `get_place_details` | `google_maps` (`type=place`) | Giờ mở cửa, giờ đông khách, tiếp cận, `thumbnail` + tối đa 6 `images` |
+| `get_place_photos` | `gmaps_place.thumbnail` + `google_maps` (`type=place`) | Ảnh đại diện cho nhiều điểm: đọc DB trước, thiếu thì tra SerpApi (tối đa 12 điểm / lần) và ghi lại DB |
 | `get_place_reviews` | `google_maps_reviews` | Review và chủ đề được nhắc nhiều |
 
 Tool dùng Vietmap (bản đồ Việt Nam, cấu hình `VIETMAP_API_KEYS`, fallback và
@@ -203,7 +204,7 @@ Tool đọc dữ liệu đã cào sẵn trong Postgres (DB `MLAI-AILUSION`, cấ
 
 | Tool | Bảng | Dùng cho |
 |---|---|---|
-| `browse_places` | `gmaps_place` | Duyệt địa điểm theo điểm đến / loại / rating / bán kính / xe lăn / khoảng giá; trả kèm `price_vnd` và `rating_adjusted` |
+| `browse_places` | `gmaps_place` | Duyệt địa điểm theo điểm đến / loại / rating / bán kính / xe lăn / khoảng giá; trả kèm `price_vnd`, `rating_adjusted` và `thumbnail` |
 | `check_opening_hours` | `gmaps_place.open_hours` | Nhiều điểm có mở vào giờ dự định không, đủ thời gian ở lại không |
 | `best_time_to_visit` | `gmaps_place.popular_times` | Giờ / ngày vắng khách nhất trong giờ mở cửa |
 | `find_festivals` | `event` | Lễ hội, sự kiện theo tỉnh (sau sáp nhập) và khoảng ngày |
