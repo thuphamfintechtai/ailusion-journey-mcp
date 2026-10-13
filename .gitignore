@@ -220,6 +220,7 @@ __marimo__/
 # --- project ---
 .env*
 !.env.example
+!.env.homelab.example
 venv/
 .venv
 .DS_Store

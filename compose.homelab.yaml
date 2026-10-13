@@ -1,0 +1,82 @@
+# MCP homelab: Postgres dữ liệu địa điểm + MCP server của riêng repo này.
+# Cần mạng dùng chung (một lần trên máy): docker network create ailusion
+# LLM gọi alias "mcp". Service này gọi alias "api" và "llm".
+#
+#   cp .env.homelab.example .env.homelab
+#   docker compose --env-file .env.homelab -f compose.homelab.yaml up -d --build
+#
+# Database MLAI-AILUSION được tạo trống lần đầu. Restore dump:
+#   docker compose --env-file .env.homelab -f compose.homelab.yaml exec -T db psql -U postgres -d "MLAI-AILUSION" < dump.sql
+
+name: ailusion-mcp
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.homelab}
+      POSTGRES_DB: postgres
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "127.0.0.1:${DB_HOST_PORT:-5435}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    labels:
+      - traefik.enable=false
+
+  mcp:
+    build: .
+    image: ailusion-journey-mcp:homelab
+    container_name: ailusion-mcp
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      MCP_TRANSPORT: http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8002"
+      BACKEND_BASE_URL: http://api:8000
+      LLM_BASE_URL: http://llm:8001
+      SERPAPI_API_KEYS: ${SERPAPI_API_KEYS:-}
+      TAVILY_API_KEYS: ${TAVILY_API_KEYS:-}
+      VIETMAP_API_KEYS: ${VIETMAP_API_KEYS:-}
+      WEATHERAPI_API_KEYS: ${WEATHERAPI_API_KEYS:-}
+      PG_HOST: db
+      PG_PORT: "5432"
+      PG_USER: ${POSTGRES_USER:-postgres}
+      PG_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.homelab}
+      PG_DATA_DATABASE: MLAI-AILUSION
+    ports:
+      - "127.0.0.1:${MCP_HOST_PORT:-8002}:8002"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      default: {}
+      ailusion:
+        aliases:
+          - mcp
+    labels:
+      - traefik.enable=false
+
+networks:
+  ailusion:
+    external: true
+    name: ailusion
+
+volumes:
+  pgdata:
