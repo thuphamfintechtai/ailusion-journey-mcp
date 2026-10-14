@@ -1,8 +1,9 @@
 # CI/CD MCP server (FastMCP)
 #
-# - Pull request / push: pytest (tool ngoài được giả lập, không tốn quota).
-# - Push lên main (sau khi CI xanh): SSH vào server, cập nhật code đúng commit vừa test, chạy
-#   lại `compose.homelab.yaml` rồi chờ container `ailusion-mcp` healthy (lỗi thì in log và báo đỏ).
+# - Pull request từ dev vào main: pytest (tool ngoài được giả lập, không tốn quota).
+# - Khi pull request đó được merge: SSH vào server, cập nhật đúng merge commit, chạy lại
+#   `compose.homelab.yaml` rồi chờ container `ailusion-mcp` healthy (lỗi thì in log và báo đỏ).
+# - Pull request từ nhánh khác vào main làm job kiểm tra thất bại, nên không merge được.
 #
 # Cần cấu hình trong repo (Settings → Secrets and variables → Actions):
 #   secrets  DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (private key, public key nằm trong
@@ -10,18 +11,18 @@
 #   variable DEPLOY_DIR  thư mục repo trên server (mặc định /opt/ailusion/ailusion-journey-mcp)
 # Trên server: thư mục đó là bản clone của repo, có sẵn `.env.homelab`; DEPLOY_USER chạy được
 # `docker` (thuộc nhóm docker) và `git fetch` được từ GitHub.
+# Branch protection trên main: bắt buộc pull request và status check "Lint + test".
 
 name: CI/CD
 
 on:
-  push:
-    branches: [main]
   pull_request:
-  workflow_dispatch:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event.action != 'closed' }}
 
 permissions:
   contents: read
@@ -29,9 +30,16 @@ permissions:
 jobs:
   test:
     name: Lint + test
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Chỉ nhận pull request từ dev
+        run: |
+          if [ "${{ github.head_ref }}" != "dev" ]; then
+            echo "Chỉ nhận pull request từ dev vào main."
+            exit 1
+          fi
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -46,8 +54,11 @@ jobs:
 
   deploy:
     name: Deploy homelab
-    needs: test
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.ref == 'dev' &&
+      github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production
@@ -59,7 +70,7 @@ jobs:
         uses: appleboy/ssh-action@v1.2.2
         env:
           DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/ailusion/ailusion-journey-mcp' }}
-          DEPLOY_SHA: ${{ github.sha }}
+          DEPLOY_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           CONTAINER: ailusion-mcp
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -72,7 +83,20 @@ jobs:
             set -euo pipefail
             cd "$DEPLOY_DIR"
             test -f .env.homelab || { echo "Thiếu $DEPLOY_DIR/.env.homelab"; exit 1; }
-            git fetch --prune origin main
+            if [ -z "$DEPLOY_SHA" ]; then
+              echo "Thiếu merge commit SHA"
+              exit 1
+            fi
+            found=0
+            for _ in $(seq 1 12); do
+              git fetch --prune origin main
+              if git cat-file -e "$DEPLOY_SHA^{commit}" 2>/dev/null; then
+                found=1
+                break
+              fi
+              sleep 5
+            done
+            test "$found" = 1 || { echo "Không thấy commit $DEPLOY_SHA trên origin/main"; exit 1; }
             git checkout -q main
             git merge --ff-only "$DEPLOY_SHA"
             echo "Deploy $(git log --oneline -1)"
