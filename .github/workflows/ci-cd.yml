@@ -1,7 +1,9 @@
 # CI/CD MCP server (FastMCP)
 #
-# - Pull request / push: pytest (tool ngoài được giả lập, không tốn quota).
-# - Push lên main (sau khi CI xanh): SSH vào server, cập nhật code đúng commit vừa test, chạy
+# Nhánh: lập trình trên `dev` (mặc định), `main` chỉ để deploy (merge dev -> main qua PR).
+#
+# - Pull request / push lên dev hoặc main: pytest (tool ngoài được giả lập, không tốn quota).
+# - Push / merge vào main (sau khi CI xanh): SSH vào server, cập nhật code đúng commit vừa test, chạy
 #   lại `compose.homelab.yaml` rồi chờ container `ailusion-mcp` healthy (lỗi thì in log và báo đỏ).
 #
 # Cần cấu hình trong repo (Settings → Secrets and variables → Actions):
@@ -15,7 +17,7 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [dev, main]
   pull_request:
   workflow_dispatch:
 
