@@ -5,10 +5,10 @@
 #   `compose.homelab.yaml` rồi chờ container `ailusion-mcp` healthy (lỗi thì in log và báo đỏ).
 # - Pull request từ nhánh khác vào main làm job kiểm tra thất bại, nên không merge được.
 #
-# Cần cấu hình trong repo (Settings → Secrets and variables → Actions):
-#   secrets  DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (private key, public key nằm trong
-#            ~/.ssh/authorized_keys của DEPLOY_USER trên server), DEPLOY_PORT (tuỳ chọn, mặc định 22)
-#   variable DEPLOY_DIR  thư mục repo trên server (mặc định /opt/ailusion/ailusion-journey-mcp)
+# Cần cấu hình trong environment production (Settings → Environments → production):
+#   secrets  DEPLOY_HOST (ssh.ailusion.io.vn), DEPLOY_USER, DEPLOY_SSH_KEY,
+#            CF_ACCESS_CLIENT_ID, CF_ACCESS_CLIENT_SECRET
+#   variable DEPLOY_DIR  thư mục git của repo trên server (mặc định /home/zuzu/ailusion-journey-mcp)
 # Trên server: thư mục đó là bản clone của repo, có sẵn `.env.homelab`; DEPLOY_USER chạy được
 # `docker` (thuộc nhóm docker) và `git fetch` được từ GitHub.
 # Branch protection trên main: bắt buộc pull request và status check "Lint + test".
@@ -110,52 +110,80 @@ jobs:
       group: deploy-mcp
       cancel-in-progress: false
     steps:
-      - name: Deploy qua SSH
-        uses: appleboy/ssh-action@v1.2.2
+      - name: Deploy qua Cloudflare Tunnel
         env:
-          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/ailusion/ailusion-journey-mcp' }}
+          TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/home/zuzu/ailusion-journey-mcp' }}
           DEPLOY_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           CONTAINER: ailusion-mcp
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || 22 }}
-          envs: DEPLOY_DIR,DEPLOY_SHA,CONTAINER
-          command_timeout: 25m
-          script: |
-            set -euo pipefail
-            cd "$DEPLOY_DIR"
-            test -f .env.homelab || { echo "Thiếu $DEPLOY_DIR/.env.homelab"; exit 1; }
-            if [ -z "$DEPLOY_SHA" ]; then
-              echo "Thiếu merge commit SHA"
-              exit 1
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/cloudflared "https://github.com/cloudflare/cloudflared/releases/download/2026.5.1/cloudflared-linux-amd64"
+          chmod +x /tmp/cloudflared
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          /tmp/cloudflared access tcp --hostname "$DEPLOY_HOST" --url 127.0.0.1:2222 >/tmp/cloudflared.log 2>&1 &
+          ready=0
+          for _ in $(seq 1 30); do
+            if (echo >/dev/tcp/127.0.0.1/2222) >/dev/null 2>&1; then
+              ready=1
+              break
             fi
-            found=0
-            for _ in $(seq 1 12); do
-              git fetch --prune origin main
-              if git cat-file -e "$DEPLOY_SHA^{commit}" 2>/dev/null; then
-                found=1
-                break
-              fi
-              sleep 5
-            done
-            test "$found" = 1 || { echo "Không thấy commit $DEPLOY_SHA trên origin/main"; exit 1; }
-            git checkout -q main
-            git merge --ff-only "$DEPLOY_SHA"
-            echo "Deploy $(git log --oneline -1)"
-            docker compose --env-file .env.homelab -f compose.homelab.yaml up -d --build --remove-orphans
-            status=starting
-            for _ in $(seq 1 60); do
-              status=$(docker inspect -f '{{.State.Health.Status}}' "$CONTAINER" 2>/dev/null || echo missing)
-              [ "$status" = healthy ] || [ "$status" = unhealthy ] && break
-              sleep 5
-            done
-            if [ "$status" != healthy ]; then
-              echo "$CONTAINER: $status"
-              docker compose --env-file .env.homelab -f compose.homelab.yaml ps
-              docker logs --tail 100 "$CONTAINER"
-              exit 1
+            sleep 1
+          done
+          if [ "$ready" != 1 ]; then
+            echo "Cloudflare Tunnel không mở được cổng local"
+            cat /tmp/cloudflared.log
+            exit 1
+          fi
+          ssh -i ~/.ssh/deploy_key -p 2222 \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=accept-new \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "$DEPLOY_USER@127.0.0.1" \
+            bash -s -- "$DEPLOY_DIR" "$DEPLOY_SHA" "$CONTAINER" <<'REMOTE'
+          set -euo pipefail
+          DEPLOY_DIR=$1
+          DEPLOY_SHA=$2
+          CONTAINER=$3
+          cd "$DEPLOY_DIR"
+          test -f .env.homelab || { echo "Thiếu $DEPLOY_DIR/.env.homelab"; exit 1; }
+          if [ -z "$DEPLOY_SHA" ]; then
+            echo "Thiếu merge commit SHA"
+            exit 1
+          fi
+          found=0
+          for _ in $(seq 1 12); do
+            git fetch --prune origin main
+            if git cat-file -e "$DEPLOY_SHA^{commit}" 2>/dev/null; then
+              found=1
+              break
             fi
-            docker image prune -f >/dev/null
-            echo "$CONTAINER healthy"
+            sleep 5
+          done
+          test "$found" = 1 || { echo "Không thấy commit $DEPLOY_SHA trên origin/main"; exit 1; }
+          git checkout -q main
+          git merge --ff-only "$DEPLOY_SHA"
+          echo "Deploy $(git log --oneline -1)"
+          docker compose --env-file .env.homelab -f compose.homelab.yaml up -d --build --remove-orphans
+          status=starting
+          for _ in $(seq 1 60); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' "$CONTAINER" 2>/dev/null || echo missing)
+            [ "$status" = healthy ] || [ "$status" = unhealthy ] && break
+            sleep 5
+          done
+          if [ "$status" != healthy ]; then
+            echo "$CONTAINER: $status"
+            docker compose --env-file .env.homelab -f compose.homelab.yaml ps
+            docker logs --tail 100 "$CONTAINER"
+            exit 1
+          fi
+          docker image prune -f >/dev/null
+          echo "$CONTAINER healthy"
+          REMOTE
