@@ -1,8 +1,11 @@
 # CI/CD MCP server (FastMCP)
 #
-# - Pull request từ dev vào main: pytest (tool ngoài được giả lập, không tốn quota).
-# - Khi pull request đó được merge: SSH vào server, cập nhật đúng merge commit, chạy lại
+# - Push lên dev, pull request vào dev / main: pytest (tool ngoài được giả lập, không tốn quota).
+# - Khi pull request dev -> main được merge: test lại đúng merge commit; xanh thì build Docker image
+#   (ghcr.io, tag latest + sha-xxxxxxx), SSH vào server, cập nhật đúng merge commit, chạy lại
 #   `compose.homelab.yaml` rồi chờ container `ailusion-mcp` healthy (lỗi thì in log và báo đỏ).
+#   Test đỏ thì không deploy (repo private gói Free không bật được branch protection).
+# - Chạy tay (Actions → CI/CD → Run workflow, ref = v1.1.0): test + build image cho bản đó.
 # - Pull request từ nhánh khác vào main làm job kiểm tra thất bại, nên không merge được.
 #
 # Cần cấu hình trong environment production (Settings → Environments → production):
@@ -11,14 +14,21 @@
 #   variable DEPLOY_DIR  thư mục git của repo trên server (mặc định /home/zuzu/ailusion-journey-mcp)
 # Trên server: thư mục đó là bản clone của repo, có sẵn `.env.homelab`; DEPLOY_USER chạy được
 # `docker` (thuộc nhóm docker) và `git fetch` được từ GitHub.
-# Branch protection trên main: bắt buộc pull request và status check "Lint + test".
 
 name: CI/CD
 
 on:
+  push:
+    branches: [dev]
   pull_request:
     types: [opened, synchronize, reopened, closed]
-    branches: [main]
+    branches: [main, dev]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag / nhánh / commit cần test + build image (VD v1.1.0); trống = nhánh đang chọn"
+        required: false
+        default: ""
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -30,11 +40,15 @@ permissions:
 jobs:
   test:
     name: Lint + test
-    if: github.event.action != 'closed'
+    # PR đóng: chỉ test lại khi đã merge vào main (trước khi deploy).
+    if: >-
+      github.event.action != 'closed' ||
+      (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Chỉ nhận pull request từ dev
+      - name: Chỉ nhận pull request từ dev vào main
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
         run: |
           if [ "${{ github.head_ref }}" != "dev" ]; then
             echo "Chỉ nhận pull request từ dev vào main."
@@ -42,7 +56,7 @@ jobs:
           fi
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ github.event.pull_request.merged && github.event.pull_request.merge_commit_sha || inputs.ref || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -59,7 +73,8 @@ jobs:
     needs: test
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')))
+      (github.event.action == 'closed' && github.event.pull_request.merged == true &&
+       github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -68,7 +83,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ github.event.pull_request.merged && github.event.pull_request.merge_commit_sha || inputs.ref || github.ref }}
+      - id: commit
+        run: echo "short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -79,13 +96,12 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
+          flavor: latest=false
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ github.event.pull_request.merged == true }}
+            type=raw,value=sha-${{ steps.commit.outputs.short }}
             type=semver,pattern={{version}},value=${{ inputs.ref }},enable=${{ startsWith(inputs.ref, 'v') }}
             type=semver,pattern={{major}}.{{minor}},value=${{ inputs.ref }},enable=${{ startsWith(inputs.ref, 'v') }}
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' && inputs.ref == '' }}
-            type=sha,prefix=sha-,enable=${{ !inputs.ref }}
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -98,6 +114,7 @@ jobs:
 
   deploy:
     name: Deploy homelab
+    needs: test
     if: >-
       github.event.action == 'closed' &&
       github.event.pull_request.merged == true &&
