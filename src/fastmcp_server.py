@@ -34,8 +34,11 @@ async def lifespan(app):
 
 
 logger.info("Đang tạo FastMCP server instance...")
+VERSION = "1.1.0"
+
 mcp = FastMCP(
     name="Ailusion Journey",
+    version=VERSION,
     instructions="""
     MCP server của Ailusion Journey — lập kế hoạch du lịch cá nhân hoá.
 
@@ -58,6 +61,7 @@ async def health_check(request: Request) -> JSONResponse:
             "status": "ok",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "service": "Ailusion Journey MCP Server",
+            "version": VERSION,
             "environment": settings.environment,
         }
     )
