@@ -225,3 +225,18 @@ async def test_het_key_tra_ma_loi_rieng():
     respx.get(f"{BASE}/matrix/v4").mock(return_value=httpx.Response(429))
     kq = await _goi("distance_matrix", {"origins": ["1,2", "3,4"]})
     assert kq["error_code"] == -4
+
+
+@respx.mock
+async def test_get_route_kem_hinh_duong_di():
+    respx.get(f"{BASE}/route/v4").mock(
+        return_value=httpx.Response(
+            200,
+            json={"code": "OK", "paths": [{"distance": 2400, "time": 360000, "points": "_p~iF~ps|U_ulLnnqC"}]},
+        )
+    )
+    co = await _goi("get_route", {"points": ["16.06,108.22", "16.05,108.24"], "include_path": True})
+    assert co["path"] == "_p~iF~ps|U_ulLnnqC" and co["path_precision"] == 5
+
+    khong = await _goi("get_route", {"points": ["16.06,108.22", "16.05,108.24"]})
+    assert "path" not in khong and "path_precision" not in khong
