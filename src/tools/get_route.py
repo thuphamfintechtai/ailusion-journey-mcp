@@ -1,5 +1,6 @@
 """Tool chỉ đường và ước tính thời gian ở Việt Nam (xe máy / ô tô / xe tải) bằng Vietmap."""
 
+import math
 from datetime import datetime, timezone
 from typing import Annotated, Any, Literal
 
@@ -49,6 +50,10 @@ def register_get_route_tool(mcp: FastMCP):
             Field(description="Giờ khởi hành ISO-8601, VD '2026-11-20T07:30:00+07:00'. Bỏ trống = bây giờ."),
         ] = None,
         include_steps: Annotated[bool, Field(description="Kèm các bước rẽ (tối đa 40 bước).")] = False,
+        include_path: Annotated[
+            bool,
+            Field(description="Kèm hình đường đi (polyline mã hoá kiểu Google) để vẽ lên bản đồ."),
+        ] = False,
     ) -> dict[str, Any]:
         input_context = {"points": points, "vehicle": vehicle}
         try:
@@ -97,6 +102,8 @@ def register_get_route_tool(mcp: FastMCP):
                     ]
                     if include_steps
                     else None,
+                    "path": p.get("points") if include_path and isinstance(p.get("points"), str) else None,
+                    "path_precision": _do_chinh_xac(p) if include_path else None,
                     "google_maps_url": link_google_maps(diem, vehicle),
                     "note": "Thời gian ước tính, chưa tính kẹt xe giờ cao điểm ở thành phố lớn.",
                 }
@@ -112,3 +119,9 @@ def register_get_route_tool(mcp: FastMCP):
             )
 
     return get_route
+
+
+def _do_chinh_xac(path: dict[str, Any]) -> int:
+    """Số chữ số thập phân của polyline: Vietmap ghi hệ số nhân (1e5 hoặc 1e6), mặc định 1e5."""
+    he_so = path.get("points_encoded_multiplier") or 1e5
+    return round(math.log10(float(he_so)))
