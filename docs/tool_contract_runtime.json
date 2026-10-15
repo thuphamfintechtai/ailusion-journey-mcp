@@ -1,0 +1,1068 @@
+{
+  "endpoint": "http://127.0.0.1:8002/mcp",
+  "date": "2026-10-14",
+  "tools": {
+    "air_quality": {
+      "required": [],
+      "inputs": [
+        "days",
+        "lat",
+        "lng",
+        "location"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "best_time_to_visit": {
+      "required": [
+        "place"
+      ],
+      "inputs": [
+        "day",
+        "destination",
+        "place"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "check_opening_hours": {
+      "required": [
+        "places",
+        "at"
+      ],
+      "inputs": [
+        "at",
+        "destination",
+        "places",
+        "stay_minutes"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "check_place_needs": {
+      "required": [
+        "places"
+      ],
+      "inputs": [
+        "destination",
+        "needs",
+        "places"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "compare_places": {
+      "required": [
+        "places"
+      ],
+      "inputs": [
+        "at",
+        "destination",
+        "needs",
+        "origin_lat",
+        "origin_lng",
+        "places",
+        "stay_minutes"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "convert_admin_unit": {
+      "required": [],
+      "inputs": [
+        "direction",
+        "district",
+        "province",
+        "ward"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "convert_currency": {
+      "required": [
+        "amount",
+        "from_currency"
+      ],
+      "inputs": [
+        "amount",
+        "from_currency",
+        "rate_type",
+        "to_currency"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "convert_lunar_date": {
+      "required": [],
+      "inputs": [
+        "leap_month",
+        "lunar_day",
+        "lunar_month",
+        "lunar_year",
+        "solar_date"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "destination_snapshot": {
+      "required": [
+        "destination"
+      ],
+      "inputs": [
+        "days",
+        "destination",
+        "per_group",
+        "start_date"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "disaster_alerts": {
+      "required": [],
+      "inputs": [
+        "days",
+        "lat",
+        "lng",
+        "location",
+        "min_level"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "distance_matrix": {
+      "required": [
+        "origins"
+      ],
+      "inputs": [
+        "destinations",
+        "origins",
+        "vehicle"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "elevation_profile": {
+      "required": [
+        "points"
+      ],
+      "inputs": [
+        "points",
+        "profile_points",
+        "vehicle"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "export_itinerary": {
+      "required": [
+        "title",
+        "days"
+      ],
+      "inputs": [
+        "days",
+        "reminder_minutes",
+        "title",
+        "travel_mode"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "fetch_page": {
+      "required": [
+        "urls"
+      ],
+      "inputs": [
+        "focus",
+        "max_chars",
+        "urls"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "find_airports": {
+      "required": [
+        "query"
+      ],
+      "inputs": [
+        "include_international",
+        "limit",
+        "query"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "find_alternatives": {
+      "required": [
+        "place"
+      ],
+      "inputs": [
+        "at",
+        "destination",
+        "limit",
+        "min_rating",
+        "needs",
+        "place",
+        "radius_km",
+        "stay_minutes"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "find_festivals": {
+      "required": [
+        "location",
+        "start_date"
+      ],
+      "inputs": [
+        "end_date",
+        "keyword",
+        "limit",
+        "location",
+        "start_date"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "find_nearby": {
+      "required": [
+        "query"
+      ],
+      "inputs": [
+        "lat",
+        "limit",
+        "lng",
+        "near",
+        "query",
+        "radius_m",
+        "with_coordinates"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "find_places": {
+      "required": [],
+      "inputs": [
+        "category",
+        "destination",
+        "lat",
+        "limit",
+        "lng",
+        "max_price_vnd",
+        "min_price_vnd",
+        "min_rating",
+        "min_reviews",
+        "needs",
+        "query",
+        "radius_km",
+        "sort_by",
+        "strict_needs",
+        "strict_price",
+        "wheelchair"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "find_stays": {
+      "required": [],
+      "inputs": [
+        "destination",
+        "kind",
+        "lat",
+        "limit",
+        "lng",
+        "max_price_vnd",
+        "min_price_vnd",
+        "min_rating",
+        "min_reviews",
+        "needs",
+        "query",
+        "radius_km",
+        "sort_by",
+        "strict_needs"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "geocode_vn": {
+      "required": [],
+      "inputs": [
+        "address",
+        "lat",
+        "limit",
+        "lng"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "get_place_details": {
+      "required": [
+        "place_id"
+      ],
+      "inputs": [
+        "place_id",
+        "source"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "get_place_photos": {
+      "required": [
+        "places"
+      ],
+      "inputs": [
+        "destination",
+        "places",
+        "source"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "get_place_reviews": {
+      "required": [
+        "place_id"
+      ],
+      "inputs": [
+        "pages",
+        "place_id",
+        "query",
+        "sort_by",
+        "source"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "get_route": {
+      "required": [
+        "points"
+      ],
+      "inputs": [
+        "avoid_ferry",
+        "depart_at",
+        "include_steps",
+        "points",
+        "vehicle"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "google_news": {
+      "required": [
+        "query"
+      ],
+      "inputs": [
+        "days",
+        "location",
+        "max_results",
+        "query"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "list_admin_units": {
+      "required": [],
+      "inputs": [
+        "limit",
+        "province",
+        "search"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "marine_forecast": {
+      "required": [],
+      "inputs": [
+        "days",
+        "lat",
+        "lng",
+        "location"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "mask_pii": {
+      "required": [
+        "text"
+      ],
+      "inputs": [
+        "style",
+        "text",
+        "types"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "parse_money": {
+      "required": [
+        "text"
+      ],
+      "inputs": [
+        "convert_to_vnd",
+        "default_currency",
+        "text"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "plan_day_route": {
+      "required": [
+        "start",
+        "stops"
+      ],
+      "inputs": [
+        "date",
+        "day_end",
+        "day_start",
+        "destination",
+        "end",
+        "lunch_break",
+        "start",
+        "stops",
+        "vehicle"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "rating_insights": {
+      "required": [
+        "place"
+      ],
+      "inputs": [
+        "destination",
+        "place"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "score_options": {
+      "required": [
+        "options",
+        "criteria"
+      ],
+      "inputs": [
+        "criteria",
+        "method",
+        "options",
+        "weight_sets"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "search_events": {
+      "required": [
+        "location",
+        "start_date"
+      ],
+      "inputs": [
+        "end_date",
+        "kind",
+        "location",
+        "max_results",
+        "start_date"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "search_flights": {
+      "required": [
+        "departure_id",
+        "arrival_id",
+        "outbound_date"
+      ],
+      "inputs": [
+        "adults",
+        "arrival_id",
+        "children",
+        "departure_id",
+        "departure_token",
+        "infants_on_lap",
+        "limit",
+        "max_price",
+        "outbound_date",
+        "return_date",
+        "stops",
+        "travel_class"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "search_hotels": {
+      "required": [
+        "destination",
+        "check_in_date",
+        "check_out_date"
+      ],
+      "inputs": [
+        "adults",
+        "check_in_date",
+        "check_out_date",
+        "children_ages",
+        "destination",
+        "hotel_class",
+        "limit",
+        "max_price",
+        "min_price",
+        "sort_by",
+        "vacation_rentals"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "search_places": {
+      "required": [
+        "query"
+      ],
+      "inputs": [
+        "lat",
+        "limit",
+        "lng",
+        "min_rating",
+        "query",
+        "zoom"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "source_trust": {
+      "required": [
+        "urls"
+      ],
+      "inputs": [
+        "urls"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "sun_and_sky": {
+      "required": [
+        "date"
+      ],
+      "inputs": [
+        "date",
+        "lat",
+        "lng",
+        "location"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "vn_calendar": {
+      "required": [
+        "start_date"
+      ],
+      "inputs": [
+        "all_days",
+        "end_date",
+        "include_observances",
+        "province",
+        "start_date"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "weather_forecast": {
+      "required": [
+        "start_date"
+      ],
+      "inputs": [
+        "end_date",
+        "hourly",
+        "lat",
+        "lng",
+        "location",
+        "start_date"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    },
+    "web_search": {
+      "required": [
+        "query"
+      ],
+      "inputs": [
+        "depth",
+        "exclude_domains",
+        "include_content",
+        "include_domains",
+        "max_results",
+        "query",
+        "time_range",
+        "vietnam_first"
+      ],
+      "output_schema_keys": [
+        "additionalProperties",
+        "type"
+      ]
+    }
+  },
+  "calls": {
+    "browse_places": {
+      "input": {
+        "destination": "Hà Nội",
+        "limit": 1
+      },
+      "elapsed_s": 0.2,
+      "is_error": false,
+      "status": "success",
+      "data_source": "ailusion_db",
+      "output_shape": {
+        "status": "str",
+        "destination": "str",
+        "total_found": "int",
+        "places": [
+          {
+            "name": "str",
+            "place_id": "str",
+            "category": "str",
+            "rating": "float",
+            "rating_adjusted": "float",
+            "reviews": "int",
+            "address": "str",
+            "lat": "float",
+            "lng": "float",
+            "phone": "str",
+            "website": "str",
+            "summary": "str"
+          }
+        ],
+        "data_source": "str",
+        "data_as_of": "str"
+      },
+      "error": null
+    },
+    "find_nearby": {
+      "input": {
+        "query": "cà phê",
+        "lat": 21.03,
+        "lng": 105.85,
+        "limit": 1,
+        "with_coordinates": false
+      },
+      "elapsed_s": 0.0,
+      "is_error": false,
+      "status": "success",
+      "data_source": null,
+      "output_shape": {
+        "status": "str",
+        "query": "str",
+        "center": {
+          "lat": "float",
+          "lng": "float"
+        },
+        "radius_m": "int",
+        "total_found": "int",
+        "places": [
+          {
+            "name": "str",
+            "address": "str",
+            "distance_km": "float",
+            "categories": "list",
+            "ref_id": "str"
+          }
+        ]
+      },
+      "error": null
+    },
+    "search_places": {
+      "input": {
+        "query": "quán cà phê Hà Nội",
+        "limit": 1
+      },
+      "elapsed_s": 0.4,
+      "is_error": false,
+      "status": "success",
+      "data_source": null,
+      "output_shape": {
+        "status": "str",
+        "query": "str",
+        "total_found": "int",
+        "places": [
+          {
+            "name": "str",
+            "place_id": "str",
+            "data_id": "str",
+            "rating": "float",
+            "reviews": "int",
+            "type": "str",
+            "address": "str",
+            "gps": "dict",
+            "open_state": "str",
+            "phone": "str",
+            "website": "str",
+            "thumbnail": "str"
+          }
+        ]
+      },
+      "error": null
+    },
+    "find_places_by_needs": {
+      "input": {
+        "needs": [
+          "wheelchair"
+        ],
+        "destination": "Hà Nội",
+        "limit": 1
+      },
+      "elapsed_s": 1.1,
+      "is_error": false,
+      "status": "success",
+      "data_source": "ailusion_db",
+      "output_shape": {
+        "status": "str",
+        "destination": "str",
+        "needs": {
+          "wheelchair": "str"
+        },
+        "candidates_checked": "int",
+        "total_found": "int",
+        "places": [
+          {
+            "name": "str",
+            "place_id": "str",
+            "category": "str",
+            "rating": "float",
+            "rating_adjusted": "float",
+            "reviews": "int",
+            "address": "str",
+            "lat": "float",
+            "lng": "float",
+            "summary": "str",
+            "needs_status": "dict"
+          }
+        ],
+        "data_source": "str",
+        "data_as_of": "str"
+      },
+      "error": null
+    },
+    "find_stays": {
+      "input": {
+        "destination": "Hà Nội",
+        "limit": 1
+      },
+      "elapsed_s": 0.1,
+      "is_error": false,
+      "status": "success",
+      "data_source": "ailusion_db",
+      "output_shape": {
+        "status": "str",
+        "destination": "str",
+        "total_found": "int",
+        "stays": [
+          {
+            "name": "str",
+            "place_id": "str",
+            "kind": "str",
+            "category": "str",
+            "price_per_night_vnd": "int",
+            "rating": "float",
+            "rating_adjusted": "float",
+            "reviews": "int",
+            "address": "str",
+            "lat": "float",
+            "lng": "float",
+            "phone": "str",
+            "website": "str"
+          }
+        ],
+        "price_stats_vnd": {
+          "p25": "int",
+          "median": "int",
+          "p75": "int",
+          "count": "int"
+        },
+        "data_as_of": "str",
+        "price_note": "str",
+        "data_source": "str"
+      },
+      "error": null
+    },
+    "search_hotels": {
+      "input": {
+        "destination": "Hà Nội",
+        "check_in_date": "2026-11-13",
+        "check_out_date": "2026-11-14",
+        "limit": 1
+      },
+      "elapsed_s": 0.1,
+      "is_error": false,
+      "status": "success",
+      "data_source": null,
+      "output_shape": {
+        "status": "str",
+        "destination": "str",
+        "nights": "int",
+        "currency": "str",
+        "total_found": "int",
+        "hotels": [
+          {
+            "name": "str",
+            "type": "str",
+            "hotel_class": "int",
+            "rating": "float",
+            "reviews": "int",
+            "location_rating": "float",
+            "price_per_night_vnd": "int",
+            "total_price_vnd": "int",
+            "prices_by_source": "list",
+            "gps": "dict",
+            "check_in_time": "str",
+            "check_out_time": "str",
+            "amenities": "list",
+            "nearby_places": "list",
+            "link": "str",
+            "property_token": "str"
+          }
+        ]
+      },
+      "error": null
+    },
+    "find_festivals": {
+      "input": {
+        "location": "Hà Nội",
+        "start_date": "2026-10-14",
+        "limit": 1
+      },
+      "elapsed_s": 2.0,
+      "is_error": false,
+      "status": "success",
+      "data_source": "ailusion_db",
+      "output_shape": {
+        "status": "str",
+        "location": "str",
+        "range": {
+          "from": "str",
+          "to": "str"
+        },
+        "total_found": "int",
+        "events": [
+          {
+            "name": "str",
+            "start_date": "str",
+            "end_date": "str",
+            "date_display": "str",
+            "location": "str",
+            "organizer": "str",
+            "highlights": "list",
+            "url": "str"
+          }
+        ],
+        "data_source": "str"
+      },
+      "error": null
+    },
+    "search_events": {
+      "input": {
+        "location": "Hà Nội",
+        "start_date": "2026-10-14",
+        "max_results": 1
+      },
+      "elapsed_s": 0.0,
+      "is_error": false,
+      "status": "success",
+      "data_source": null,
+      "output_shape": {
+        "status": "str",
+        "location": "str",
+        "range": {
+          "from": "str",
+          "to": "str"
+        },
+        "query_used": "str",
+        "answer": "str",
+        "answer_note": "str",
+        "results": [
+          {
+            "title": "str",
+            "url": "str",
+            "domain": "str",
+            "source_type": "str",
+            "published_date": "str",
+            "snippet": "str",
+            "score": "float"
+          }
+        ]
+      },
+      "error": null
+    },
+    "get_place_details": {
+      "input": {
+        "place_id": "Hồ Hoàn Kiếm",
+        "source": "db"
+      },
+      "elapsed_s": 1.2,
+      "is_error": false,
+      "status": "success",
+      "data_source": "ailusion_db",
+      "output_shape": {
+        "status": "str",
+        "place": {
+          "name": "str",
+          "place_id": "str",
+          "data_id": "str",
+          "rating": "float",
+          "reviews": "int",
+          "reviews_per_rating": {
+            "1": "int",
+            "2": "int",
+            "3": "int",
+            "4": "int",
+            "5": "int"
+          },
+          "type": "str",
+          "address": "str",
+          "gps": {
+            "latitude": "float",
+            "longitude": "float"
+          },
+          "maps_url": "str",
+          "description": "str"
+        },
+        "data_as_of": "str",
+        "data_source": "str"
+      },
+      "error": null
+    },
+    "get_place_photos": {
+      "input": {
+        "places": [
+          "Hồ Hoàn Kiếm"
+        ],
+        "destination": "Hà Nội",
+        "source": "db"
+      },
+      "elapsed_s": 1.2,
+      "is_error": false,
+      "status": "success",
+      "data_source": null,
+      "output_shape": {
+        "status": "str",
+        "photos": {
+          "Hồ Hoàn Kiếm": "NoneType"
+        },
+        "from_db": "int",
+        "from_serpapi": "int"
+      },
+      "error": null
+    },
+    "get_place_reviews": {
+      "input": {
+        "place_id": "Hồ Hoàn Kiếm",
+        "source": "db"
+      },
+      "elapsed_s": 1.2,
+      "is_error": false,
+      "status": "success",
+      "data_source": "ailusion_db",
+      "output_shape": {
+        "status": "str",
+        "place": {
+          "name": "str",
+          "rating": "float",
+          "reviews": "int",
+          "address": "str"
+        },
+        "reviews_per_rating": {
+          "1": "int",
+          "2": "int",
+          "3": "int",
+          "4": "int",
+          "5": "int"
+        },
+        "returned": "int",
+        "reviews": [
+          {
+            "rating": "float",
+            "date": "str",
+            "text": "str"
+          }
+        ],
+        "note": "str",
+        "data_as_of": "str",
+        "data_source": "str"
+      },
+      "error": null
+    }
+  }
+}

@@ -89,7 +89,7 @@ def register_search_places_tool(mcp: FastMCP):
             "`place_id` lấy từ đây.\n\n"
             "Mỗi lần gọi tốn 1 lượt quota, trả tối đa 20 địa điểm. Khi SerpApi lỗi / hết quota tool "
             "tự trả dữ liệu đã lưu (`data_source`='ailusion_db'); muốn duyệt dữ liệu đã lưu chủ động "
-            "(miễn phí) thì dùng browse_places."
+            "(miễn phí) thì dùng find_places."
         ),
         tags={"journey", "serpapi", "maps"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "serpapi:google_maps"},

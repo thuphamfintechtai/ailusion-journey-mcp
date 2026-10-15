@@ -26,7 +26,7 @@ def register_destination_snapshot_tool(mcp: FastMCP):
             "thời tiết các ngày tới, top địa điểm theo nhóm (sightseeing = tham quan, food_drink = ăn "
             "uống, stay = lưu trú, relax = spa), và lễ hội diễn ra trong khoảng ngày.\n\n"
             "Khi nào dùng: bước đầu khi người dùng hỏi 'đi X có gì', để có khung trước khi gọi các tool "
-            "chi tiết (browse_places, weather_forecast, find_festivals).\n"
+            "chi tiết (find_places, weather_forecast, find_festivals).\n"
             "Thời tiết chỉ có cho các điểm đến phổ biến và tối đa 7 ngày kể từ lần cập nhật gần nhất; "
             "phần nào không có dữ liệu sẽ vắng mặt trong kết quả."
         ),

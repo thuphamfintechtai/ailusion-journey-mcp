@@ -477,7 +477,7 @@ class TravelDb:
             url,
             id_,
         )
-        # Sửa luôn bản rút gọn đang cache để browse_places không phải chờ hết TTL mới thấy ảnh.
+        # Sửa luôn bản rút gọn đang cache để find_places không phải chờ hết TTL mới thấy ảnh.
         for p in self._cache.get("places") or []:
             if id_ in (p.get("place_id"), p.get("cid")) and not p.get("thumbnail"):
                 p["thumbnail"] = url

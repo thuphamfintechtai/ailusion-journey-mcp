@@ -129,19 +129,19 @@ def test_trang_thai_mo_cua():
 # --- tool đọc DB ---------------------------------------------------------------
 
 
-async def test_browse_places_loc_theo_diem_den_va_xe_lan(db_gia):
-    kq = await _goi("browse_places", {"destination": "Huế", "wheelchair": True})
+async def test_find_places_loc_theo_diem_den_va_xe_lan(db_gia):
+    kq = await _goi("find_places", {"destination": "Huế", "wheelchair": True})
     assert kq["status"] == "success" and kq["data_source"] == "ailusion_db"
     assert [p["name"] for p in kq["places"]] == ["Chùa Thiên Mụ"]
 
 
-async def test_browse_places_diem_den_chua_co_goi_y(db_gia):
-    kq = await _goi("browse_places", {"destination": "Phú Quốc"})
+async def test_find_places_diem_den_chua_co_goi_y(db_gia):
+    kq = await _goi("find_places", {"destination": "Phú Quốc"})
     assert kq["places"] == [] and "Huế" in kq["available_destinations"]
 
 
-async def test_browse_places_theo_ban_kinh(db_gia):
-    kq = await _goi("browse_places", {"lat": 16.4532, "lng": 107.5448, "radius_km": 1, "sort_by": "distance"})
+async def test_find_places_theo_ban_kinh(db_gia):
+    kq = await _goi("find_places", {"lat": 16.4532, "lng": 107.5448, "radius_km": 1, "sort_by": "distance"})
     assert [p["name"] for p in kq["places"]] == ["Chùa Thiên Mụ"]
 
 
@@ -275,13 +275,13 @@ async def test_best_time_ngay_khong_co_du_lieu(db_gia):
     assert kq["days"] == [] and "note" in kq
 
 
-async def test_browse_places_khong_khop_co_note_dung(db_gia):
-    kq = await _goi("browse_places", {"destination": "Huế", "query": "drop table"})
+async def test_find_places_khong_khop_co_note_dung(db_gia):
+    kq = await _goi("find_places", {"destination": "Huế", "query": "drop table"})
     assert kq["total_found"] == 0 and "Không có địa điểm khớp" in kq["note"]
 
 
-async def test_browse_places_chi_co_tu_thua_tra_ca_diem_den(db_gia):
-    kq = await _goi("browse_places", {"destination": "Huế", "query": "ngon nhất ở"})
+async def test_find_places_chi_co_tu_thua_tra_ca_diem_den(db_gia):
+    kq = await _goi("find_places", {"destination": "Huế", "query": "ngon nhất ở"})
     assert kq["total_found"] == 2
 
 
@@ -289,8 +289,8 @@ async def test_browse_places_chi_co_tu_thua_tra_ca_diem_den(db_gia):
     "args",
     [{"lat": 16.0}, {}, {"destination": "  "}, {"destination": "Huế", "sort_by": "distance"}],
 )
-async def test_browse_places_tham_so_sai(db_gia, args):
-    kq = await _goi("browse_places", args)
+async def test_find_places_tham_so_sai(db_gia, args):
+    kq = await _goi("find_places", args)
     assert kq["status"] == "error" and kq["error_code"] == -2
 
 
@@ -318,7 +318,7 @@ async def test_db_sap_tool_tra_loi_db_va_fallback_tra_loi_goc(monkeypatch, het_k
         raise OSError("connection refused")
 
     monkeypatch.setattr(travel_db, "_lay_pool", sap)
-    kq = await _goi("browse_places", {"destination": "Huế"})
+    kq = await _goi("find_places", {"destination": "Huế"})
     assert kq["status"] == "error" and kq["error_code"] == -3
     kq = await _goi("search_places", {"query": "chùa Huế"})
     assert kq["status"] == "error" and kq["error_code"] == -4
@@ -369,9 +369,9 @@ def test_tu_khoa_nfd_va_chu_hoa():
 
 async def test_query_co_dau_khong_khop_nham(db_gia):
     # Gõ có dấu 'bộ' không được khớp 'bò'; gõ không dấu 'bo' thì khớp.
-    kq = await _goi("browse_places", {"destination": "Huế", "query": "bộ"})
+    kq = await _goi("find_places", {"destination": "Huế", "query": "bộ"})
     assert kq["total_found"] == 0
-    kq = await _goi("browse_places", {"destination": "Huế", "query": "bo"})
+    kq = await _goi("find_places", {"destination": "Huế", "query": "bo"})
     assert [p["name"] for p in kq["places"]] == ["Bún bò Huế O Cương"]
 
 
@@ -417,7 +417,7 @@ async def test_find_destination_theo_ranh_gioi_tu(db_gia, text, khoa):
 
 
 async def test_category_so_nguyen_tu(db_gia):
-    kq = await _goi("browse_places", {"destination": "Hà Nội", "category": "Hồ"})
+    kq = await _goi("find_places", {"destination": "Hà Nội", "category": "Hồ"})
     assert [p["name"] for p in kq["places"]] == ["Hồ Hoàn Kiếm"]
 
 
@@ -436,7 +436,7 @@ async def test_tra_nhieu_dia_diem_mot_truy_van(db_gia):
 
 
 async def test_rating_0_khong_review_la_chua_co_danh_gia(db_gia, het_key_serpapi):
-    kq = await _goi("browse_places", {"destination": "Đà Nẵng", "query": "Cầu Rồng"})
+    kq = await _goi("find_places", {"destination": "Đà Nẵng", "query": "Cầu Rồng"})
     assert "rating" not in kq["places"][0]
     kq = await _goi("get_place_details", {"place_id": "Cầu Rồng"})
     assert "rating" not in kq["place"] and kq["place"]["reviews"] == 0
@@ -484,10 +484,10 @@ async def test_dia_diem_lac_vung_bi_loai_khi_loc_theo_diem_den(db_gia, monkeypat
         return await goc(sql, *args)
 
     monkeypatch.setattr(travel_db, "fetch", fetch)
-    kq = await _goi("browse_places", {"destination": "Huế"})
+    kq = await _goi("find_places", {"destination": "Huế"})
     assert "Đặc sản Huế ở Sài Gòn" not in [p["name"] for p in kq["places"]]
     # Tìm theo toạ độ thì vẫn thấy (đúng vị trí thật của nó).
-    kq = await _goi("browse_places", {"lat": 10.77, "lng": 106.70, "radius_km": 1})
+    kq = await _goi("find_places", {"lat": 10.77, "lng": 106.70, "radius_km": 1})
     assert [p["name"] for p in kq["places"]] == ["Đặc sản Huế ở Sài Gòn"]
 
 
@@ -519,9 +519,9 @@ async def test_ten_kem_thanh_pho_van_tim_duoc(db_gia):
 
 
 async def test_nhieu_diem_den_co_note(db_gia):
-    kq = await _goi("browse_places", {"destination": "Hà Nội - Huế"})
+    kq = await _goi("find_places", {"destination": "Hà Nội - Huế"})
     assert "nhiều điểm đến" in kq["note"] and "Hà Nội" in kq["note"]
-    kq = await _goi("browse_places", {"destination": "Huế", "lat": 16.4532, "lng": 107.5448, "radius_km": 1})
+    kq = await _goi("find_places", {"destination": "Huế", "lat": 16.4532, "lng": 107.5448, "radius_km": 1})
     assert "bỏ qua `destination`" in kq["note"]
 
 

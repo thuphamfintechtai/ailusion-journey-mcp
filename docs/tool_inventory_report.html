@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiểm kê và đề xuất hợp nhất MCP tools | Ailusion Journey</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#182536;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}header{background:#14263e;color:white;padding:34px max(22px,calc((100vw - 1240px)/2))}h1{margin:0 0 10px;font-size:clamp(1.6rem,3vw,2.3rem)}h2{font-size:1.35rem;margin:0 0 14px}h3{font-size:1.05rem;margin:0 0 8px}p{line-height:1.55}header p{max-width:850px;margin:0;color:#d8e3ef}main{max-width:1280px;margin:auto;padding:24px 20px 56px}section{background:white;border:1px solid #dce5ee;border-radius:12px;padding:22px;margin:0 0 20px;box-shadow:0 3px 12px #19334a0a}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}.card{background:#e9f3ff;padding:16px;border-radius:10px;border:1px solid #cce0f4}.card strong{display:block;font-size:1.7rem;color:#0a558c}.muted{color:#526273}.small{font-size:.88rem}.note{background:#fff6dc;border-left:4px solid #c88600;padding:12px 15px;border-radius:4px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}.group{border:1px solid #dce5ee;border-radius:9px;padding:14px;background:#fbfdff}.group p{margin:6px 0 0}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 16px}input,select{font:inherit;padding:9px 11px;border:1px solid #b9c9d9;border-radius:8px;background:white}input{flex:1;min-width:230px}.tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.91rem}th,td{border-bottom:1px solid #e3eaf1;padding:10px;vertical-align:top;text-align:left}th{background:#eaf2fa;position:sticky;top:0;z-index:1;white-space:nowrap}tbody tr:hover{background:#f7fbff}td:first-child{white-space:nowrap}code{font-family:Consolas,monospace;font-size:.9em;background:#eef3f8;padding:2px 4px;border-radius:4px}a{color:#075a9e;text-decoration:none}a:hover{text-decoration:underline}.badge{display:inline-block;padding:2px 7px;border-radius:20px;background:#e6eff8;color:#264963;font-size:.78rem;white-space:nowrap}.high{background:#d8f3e5;color:#125735}.medium{background:#fff0c9;color:#764d00}.low{background:#e9edf2;color:#435468}ol{padding-left:22px}li{line-height:1.55;margin:9px 0}.decision{border-left:4px solid #2678ae;padding:9px 13px;margin:9px 0;background:#f2f8fc}.decision p{margin:4px 0}footer{color:#526273;font-size:.85rem}@media print{body{background:white}header{padding:24px}main{padding:12px}section{box-shadow:none;break-inside:avoid}th{position:static}.toolbar{display:none}}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Kiểm kê và đề xuất hợp nhất MCP tools</h1>
+  <p>Ailusion Journey MCP v1.1.0 (nền commit <code>9492022</code>, có thay đổi tại workspace) · Rà soát mã nguồn ngày 14/10/2026 · Phạm vi: các tool được tự động đăng ký từ <code>src/tools</code>.</p>
+</header>
+<main>
+  <div class="cards"><div class="card"><strong id="total">—</strong>tool công khai</div><div class="card"><strong id="api-count">—</strong>tool có nguồn API</div><div class="card"><strong id="db-count">—</strong>tool có nguồn DB</div><div class="card"><strong id="other-count">—</strong>tool có nguồn Khác</div></div>
+  <section>
+    <h2>Phương pháp và cách đọc</h2>
+    <p>Kiểm kê các file <code>src/tools/*.py</code> có hàm <code>register_*</code> và decorator <code>@mcp.tool</code>, đối chiếu lời gọi trong thân hàm với <code>src/services</code>. <a href="../src/auto_register.py">auto_register.py</a> bỏ qua file bắt đầu bằng <code>_</code>; vì vậy <code>_template.py</code> và các module dùng chung không tính là tool. Resource <code>system://health</code> và HTTP <code>/health</code> cũng không thuộc bảng tool.</p>
+    <p><b>API</b> = gọi dịch vụ hoặc feed bên ngoài; <b>DB</b> = đọc/ghi PostgreSQL qua <code>travel_db</code>; <b>Khác</b> = dữ liệu offline, thư viện, quy tắc hoặc tính toán nội bộ. Mỗi tool có thể mang nhiều nhãn, kể cả khi một nguồn chỉ dùng theo tùy chọn hoặc khi nguồn chính lỗi; do đó tổng ba ô thống kê lớn hơn số tool. “API → DB dự phòng” chỉ áp dụng khi đường xử lý lỗi thực sự gọi <code>fallback_db</code>; không có nghĩa luôn đọc cả hai nguồn. Nhãn nguồn thể hiện đường đi của mã, không xác nhận khóa API, kết nối DB hay dữ liệu đang sẵn có khi triển khai.</p>
+    <p class="note"><b>Lưu ý độ mới:</b> bảng <code>gmaps_place</code> và <code>event</code> là dữ liệu đã lưu; giá phòng, giờ mở cửa và sự kiện có thể thay đổi. Các tool DB phục vụ tra cứu nhanh, còn tool API lấy dữ liệu mới hơn trong phạm vi nhà cung cấp. Một số tool có cùng mục đích nhưng khác hợp đồng đầu vào và độ mới, nên đề xuất gộp là thiết kế tương lai, chưa phải xác nhận có thể xóa tool cũ ngay.</p>
+  </section>
+  <section>
+    <h2>Bản đồ nguồn dữ liệu</h2>
+    <div class="grid">
+      <div class="group"><h3>PostgreSQL nội bộ</h3><p><code>gmaps_place</code> (POI, chỗ ở, tiện nghi, giờ mở, review, ảnh), <code>event</code>, <code>weather_current</code>, <code>weather_forecast</code>. Xem <a href="../src/services/travel_db.py">travel_db.py</a>.</p></div>
+      <div class="group"><h3>API du lịch và bản đồ</h3><p>SerpApi: Google Maps, Hotels, Flights, Reviews; Vietmap: POI, địa chỉ, tuyến, ma trận, VRP. Xem <a href="../src/services/serpapi_client.py">serpapi_client.py</a> và <a href="../src/services/vietmap_client.py">vietmap_client.py</a>.</p></div>
+      <div class="group"><h3>API thời tiết và web</h3><p>WeatherAPI, Tavily, GDACS, Open Topo Data, Tranco, Wayback CDX, Google News RSS, tỷ giá Vietcombank và nguồn dự phòng. Lịch Việt Nam có rules/overrides nội bộ và Google ICS tùy cấu hình.</p></div>
+      <div class="group"><h3>Khác: dữ liệu và xử lý nội bộ</h3><p>Danh mục hành chính <code>vietnam-provinces</code>, bảng sân bay Việt Nam, lịch quy tắc/overrides, thư viện âm lịch và các phép tính. <code>backend_client</code>/<code>llm_client</code> có cấu hình nhưng không được tool công khai nào gọi; <code>_template.py</code> bị bỏ qua khi đăng ký.</p></div>
+    </div>
+  </section>
+  <section>
+    <h2>Toàn bộ tool hiện có</h2>
+    <p class="muted small">Lọc theo API, DB hoặc Khác; nhấp tên tool để xem mã nguồn. Tool có nhiều nguồn sẽ xuất hiện ở nhiều bộ lọc. Cột “gần nhau” chỉ nhóm trùng phạm vi, không kết luận mọi cặp đều nên gộp.</p>
+    <div class="toolbar"><input id="q" type="search" placeholder="Tìm tool, chức năng, nguồn..."><select id="group"><option value="">Tất cả nhóm</option></select><select id="source-type"><option value="">Tất cả nguồn</option><option value="API">API</option><option value="DB">DB</option><option value="Khác">Khác</option></select><span id="visible" class="muted small"></span></div>
+    <div class="tablewrap"><table><thead><tr><th>#</th><th>Tool</th><th>Nhóm</th><th>Chức năng và đầu ra chính</th><th>Loại nguồn</th><th>Nguồn cụ thể</th><th>Tool gần chức năng</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+  <section>
+    <h2>Đối chiếu hợp đồng thực tế qua MCP</h2>
+    <p>Schema hiện tại có <b>42 tool</b>. Bản gọi thử trước khi gộp hai tool POI ghi lại <b>11 lần gọi</b>, tất cả trả <code>status=success</code>; hai dòng tên cũ bên dưới là dữ liệu lịch sử. Tool <code>find_places</code> mới đã qua test với cả bộ lọc thường và <code>needs</code>, nhưng chưa được gọi qua HTTP server sau thay đổi. <a href="tool_contract_runtime.json">Xem bản kiểm kê cấu trúc JSON</a> (schema hiện tại và hình dạng output lịch sử; không lưu giá trị kết quả).</p>
+    <div class="tablewrap"><table><thead><tr><th>Tool</th><th>Đầu vào bắt buộc</th><th>Output gốc</th><th>Trường mỗi phần tử chính</th><th>Nhận xét khi gộp</th></tr></thead><tbody>
+      <tr><td><code>browse_places</code> (đã bỏ)</td><td>Không có trong schema cũ; nghiệp vụ cần <code>destination</code> hoặc tọa độ</td><td><code>places[]</code>, <code>total_found</code>, <code>data_source</code></td><td><code>name, place_id, category, rating, lat, lng</code></td><td>Đã chuyển sang <code>find_places</code> không truyền <code>needs</code>.</td></tr>
+      <tr><td><code>find_places_by_needs</code> (đã bỏ)</td><td><code>needs</code></td><td><code>places[]</code>, <code>candidates_checked</code>, <code>data_source</code></td><td>Như <code>browse_places</code> và thêm <code>needs_status</code></td><td>Đã chuyển sang <code>find_places</code> có <code>needs</code>.</td></tr>
+      <tr><td><code>find_nearby</code></td><td><code>query</code></td><td><code>places[]</code>, <code>center</code>, <code>radius_m</code></td><td><code>name, address, distance_km, ref_id</code></td><td>ID Vietmap là <code>ref_id</code>; thiếu rating và <code>place_id</code>. Cần chuẩn hóa trước khi gộp giao diện.</td></tr>
+      <tr><td><code>search_places</code></td><td><code>query</code></td><td><code>places[]</code>, <code>total_found</code></td><td><code>name, place_id, rating, reviews, gps, open_state</code></td><td>Cùng mục đích tìm POI nhưng nguồn Google/SerpApi và trường vị trí khác Vietmap/DB.</td></tr>
+      <tr><td><code>find_stays</code></td><td>Không có trong schema; nghiệp vụ cần <code>destination</code> hoặc tọa độ</td><td><code>stays[]</code>, <code>price_stats_vnd</code>, <code>data_as_of</code></td><td><code>name, place_id, kind, price_per_night_vnd, lat, lng</code></td><td>Giá tham khảo từ DB; gần với <code>search_hotels</code> ở trường giá.</td></tr>
+      <tr><td><code>search_hotels</code></td><td><code>destination, check_in_date, check_out_date</code></td><td><code>hotels[]</code>, <code>nights</code>, <code>currency</code></td><td><code>name, price_per_night_vnd, total_price_vnd, prices_by_source, property_token</code></td><td>Giá theo ngày và nhiều nguồn đặt phòng; muốn gộp cần phân biệt loại giá và chuẩn hóa <code>stays/hotels</code>.</td></tr>
+      <tr><td><code>find_festivals</code></td><td><code>location, start_date</code></td><td><code>events[]</code>, <code>range</code>, <code>data_source</code></td><td><code>name, start_date, end_date, location, organizer</code></td><td>Trả bản ghi sự kiện có ngày.</td></tr>
+      <tr><td><code>search_events</code></td><td><code>location, start_date</code></td><td><code>results[]</code>, <code>answer</code>, <code>query_used</code></td><td><code>title, url, domain, published_date, snippet</code></td><td>Trả trang web; <code>published_date</code> là ngày bài đăng, chưa phải ngày diễn ra sự kiện. Chưa thể gộp trực tiếp với <code>events[]</code>.</td></tr>
+      <tr><td><code>get_place_details</code></td><td><code>place_id</code></td><td><code>place{}</code>, <code>data_as_of</code></td><td><code>name, place_id, rating, address, gps, description</code></td><td>Đối tượng chi tiết một POI.</td></tr>
+      <tr><td><code>get_place_photos</code></td><td><code>places</code></td><td><code>photos{id:url}</code>, <code>from_db</code>, <code>from_serpapi</code></td><td>Ánh xạ ID → URL/null, hỗ trợ nhiều ID</td><td>Khác cardinality và output so với hai tool chi tiết còn lại.</td></tr>
+      <tr><td><code>get_place_reviews</code></td><td><code>place_id</code></td><td><code>reviews[]</code>, <code>reviews_per_rating</code>, <code>returned</code></td><td><code>rating, date, text</code></td><td>Danh sách review có phân trang/lọc; chỉ nên dùng chung resolve ID và cache.</td></tr>
+    </tbody></table></div>
+    <p class="note"><b>Giới hạn của phép thử:</b> Output API thành công hiện không luôn có <code>data_source</code>, nên nguồn được xác định bằng đường gọi và mã tool. Dữ liệu thực tế phụ thuộc địa điểm, thời điểm, cache và quota; bản JSON ghi cấu trúc của một lần gọi đại diện. Các bản gọi HTTP ở trên diễn ra trước khi thay hai tool POI bằng <code>find_places</code>.</p>
+  </section>
+  <section>
+    <h2>Quy tắc gộp: DB trước, API sau</h2>
+    <p><b>“DB có dữ liệu” nghĩa là dữ liệu khớp truy vấn, có đủ các trường người gọi cần và còn phù hợp với thời điểm yêu cầu.</b> Một bản ghi chỗ ở có giá tham khảo không trả lời được giá phòng vào ngày nhận phòng cụ thể; một bài web có ngày đăng không thay thế được ngày diễn ra sự kiện. Vì vậy chỉ gọi API khi DB thiếu <em>dữ liệu dùng được</em> cho yêu cầu đó. Giao diện hợp nhất nên có <code>source=auto|db|api</code>: mặc định <code>auto</code> chạy DB trước; <code>db</code> chỉ đọc DB; <code>api</code> lấy dữ liệu trực tuyến theo yêu cầu.</p>
+    <ol>
+      <li>Chuẩn hóa đầu vào một lần: địa danh/tọa độ, loại điểm, ngày, nhu cầu và các trường bắt buộc của câu hỏi.</li>
+      <li>Đọc DB và kiểm tra từng ứng viên theo bộ lọc, <code>required_fields</code>, ngày áp dụng và <code>fetched_at</code>. Trả ngay nếu DB đáp ứng đủ.</li>
+      <li>Nếu DB không có ứng viên đủ điều kiện, chọn <b>một API phù hợp</b>: Vietmap cho POI gần tọa độ; SerpApi cho rating/review/giá khách sạn theo ngày; Tavily cho nguồn web về sự kiện; WeatherAPI cho dự báo thiếu ngày hoặc trường. Không gọi đồng loạt các API.</li>
+      <li>Chuẩn hóa output trước khi trả: tên danh sách thống nhất, ID có tên nguồn, <code>data_source</code>, <code>data_as_of</code>, và cờ <code>price_basis</code>/<code>stale</code> khi liên quan. Ghi cache/DB cho lần sau chỉ ở những dữ liệu và bảng cho phép.</li>
+      <li>Nếu DB lỗi, thử API; nếu API cũng lỗi, trả lỗi rõ ràng hoặc dữ liệu DB cũ có gắn <code>stale=true</code>. Không coi bản ghi thiếu trường hoặc quá hạn là kết quả đầy đủ.</li>
+    </ol>
+    <div class="tablewrap"><table><thead><tr><th>Giao diện đề xuất</th><th>Gộp tool nào</th><th>Đọc DB trước</th><th>Khi nào gọi API</th><th>Output chung</th></tr></thead><tbody>
+      <tr><td><code>find_places</code></td><td>Đã gộp <code>browse_places</code> + <code>find_places_by_needs</code>; giai đoạn sau có thể thêm <code>find_nearby</code> + <code>search_places</code>.</td><td><code>gmaps_place</code>; lọc query, vùng, bán kính, giá, rating, <code>needs</code>.</td><td>Hiện tool mới chỉ dùng DB. Sau khi chuẩn hóa ID/nguồn, DB thiếu POI → Vietmap; thiếu rating/trạng thái mới → SerpApi.</td><td>Hiện trả <code>places[]</code>, <code>needs_status</code> khi cần; tương lai thêm ID có nguồn và trường thiếu.</td></tr>
+      <tr><td><code>discover_events</code> (chỉ lớp điều phối)</td><td>Điều phối <code>find_festivals</code> và <code>search_events</code>; giữ hai tool chuyên biệt.</td><td>Bản ghi <code>event</code> đúng vùng và khoảng ngày.</td><td>Không có sự kiện phù hợp → Tavily tìm nguồn web; giữ kết quả ở <code>web_sources[]</code> tới khi xác minh ngày diễn ra.</td><td><code>events[]</code> cho bản ghi có ngày; <code>web_sources[]</code> cho bài web chưa xác thực.</td></tr>
+      <tr><td>Service chi tiết địa điểm</td><td>Dùng chung bên dưới <code>get_place_details</code>, <code>get_place_photos</code>, <code>get_place_reviews</code>; giữ ba tool.</td><td>Đọc theo <code>place_id</code>/<code>cid</code>; ảnh đọc theo lô; review kiểm tra số lượng và bộ lọc.</td><td>Thiếu trường chi tiết, ảnh hoặc review theo yêu cầu → SerpApi đúng endpoint.</td><td>Giữ output chuyên biệt <code>place{}</code>, <code>photos{id:url}</code>, <code>reviews[]</code>; thống nhất nguồn và thời điểm dữ liệu.</td></tr>
+    </tbody></table></div>
+    <p class="note"><b>Hiện trạng:</b> <code>find_places</code> đã gộp hai tool tìm POI trong DB; hiện chưa có API fallback. <code>find_stays</code> và <code>search_hotels</code> vẫn là hai tool riêng. <code>search_places</code>, <code>find_nearby</code>, <code>search_hotels</code>, <code>search_events</code> và <code>weather_forecast</code> vẫn gọi API trước, DB chỉ là fallback khi API lỗi. <code>get_place_details</code>, <code>get_place_reviews</code> và <code>get_place_photos</code> đã có đường DB trước.</p>
+  </section>
+  <section>
+    <h2>Nhóm trùng chức năng và quyết định gộp</h2>
+    <div class="decision"><h3>1. Tìm địa điểm: đã gộp DB</h3><p><code>find_places</code> đã thay <code>browse_places</code> và <code>find_places_by_needs</code>. Cùng một input cho điểm đến, tọa độ, loại, giá, rating và bán kính; <code>needs</code>/<code>strict_needs</code> là tùy chọn. Không có <code>needs</code> thì không đọc thuộc tính chi tiết. <code>search_places</code> và <code>find_nearby</code> cũng trả <code>places[]</code> nhưng khác ID, tọa độ và dữ liệu rating. Chỉ gộp thêm hai nguồn này sau khi chuẩn hóa <code>place_id</code>/<code>ref_id</code>, <code>lat/lng</code> và các trường có thể thiếu.</p></div>
+    <div class="decision"><h3>2. Tìm chỗ ở: hai tool riêng</h3><p><code>find_stays</code> đọc giá tham khảo từ DB; <code>search_hotels</code> lấy giá theo ngày từ SerpApi. Hai tool có bộ lọc và output gần nhau nhưng loại giá khác nhau; cần phân biệt giá tham khảo và giá theo ngày trước khi quyết định gộp.</p></div>
+    <div class="decision"><h3>3. Sự kiện: giữ riêng ở phiên bản hiện tại</h3><p><code>find_festivals</code> trả <code>events[]</code> gồm ngày diễn ra, còn <code>search_events</code> trả <code>results[]</code> là các trang web với ngày đăng bài. Đây là hai kiểu dữ liệu khác nhau. Chỉ cân nhắc giao diện chung sau khi có bước trích và xác thực ngày/địa điểm sự kiện từ trang web. <code>vn_calendar</code> tiếp tục giữ riêng cho nghỉ lễ và lịch quy tắc.</p></div>
+    <div class="decision"><h3>4. Chi tiết địa điểm: dùng chung service</h3><p><code>get_place_details</code> trả một <code>place{}</code>, <code>get_place_photos</code> trả ánh xạ ảnh cho nhiều ID, <code>get_place_reviews</code> trả review có lọc/phân trang. Cần dùng chung resolve ID, cache và quy tắc nguồn; giữ ba tool công khai vì đầu vào và hình dạng output khác nhau. <code>check_opening_hours</code>, <code>best_time_to_visit</code>, <code>rating_insights</code> cũng là phân tích chuyên biệt.</p></div>
+    <div class="decision"><h3>5. Tìm theo tiện nghi và kiểm tra tiện nghi: chỉ gộp logic</h3><p><code>find_places</code> với <code>needs</code> tìm ứng viên; <code>check_place_needs</code> kiểm tra danh sách có sẵn; <code>find_stays</code> cũng lọc <code>needs</code>. Đã có <code>_nhu_cau.py</code> dùng chung. Có thể thống nhất schema <code>needs_status</code>, nhưng không cần gộp hai thao tác tìm và kiểm tra.</p></div>
+    <div class="decision"><h3>6. Tuyến đường, thời tiết, lịch: trùng nhóm, không nên gộp tool</h3><p><code>get_route</code> một tuyến; <code>distance_matrix</code> nhiều cặp; <code>plan_day_route</code> tối ưu thứ tự/khung giờ; <code>elevation_profile</code> đo độ dốc. <code>weather_forecast</code>, <code>air_quality</code>, <code>marine_forecast</code>, <code>sun_and_sky</code> dùng cùng WeatherAPI nhưng trả các chỉ số khác nhau. <code>convert_lunar_date</code> đổi ngày, <code>vn_calendar</code> liệt kê ngày/sự kiện. Chỉ nên chia sẻ resolve vị trí, cache và cấu trúc lỗi.</p></div>
+    <div class="decision"><h3>7. Web và tin tức: cân nhắc theo nhu cầu client</h3><p><code>web_search</code>, <code>search_events</code>, <code>google_news</code> cùng tìm thông tin công khai nhưng có bộ lọc/ngữ nghĩa khác; <code>fetch_page</code> trích xuất URL đã biết. <code>google_news</code> được mã nguồn đánh dấu chỉ dùng thử vì điều khoản RSS phi thương mại. Không nên gộp vào tìm sự kiện hoặc web chung trước khi quyết định phạm vi dùng và hợp đồng nguồn.</p></div>
+  </section>
+  <section>
+    <h2>Danh sách gộp để giảm số tool công khai</h2>
+    <p>Hiện có 42 tool: <code>find_places</code> đã thay hai tên POI DB cũ. Các bước tiếp theo chỉ nên bỏ tên cũ khi input/output đã được đối chiếu và client chuyển sang tên chung.</p>
+    <div class="tablewrap"><table><thead><tr><th>Ưu tiên</th><th>Tool hiện tại</th><th>Tool chung</th><th>Input và output cần thống nhất</th><th>Luồng DB → API</th></tr></thead><tbody>
+      <tr><td>Đã làm</td><td><code>browse_places</code> + <code>find_places_by_needs</code></td><td><code>find_places</code></td><td><code>needs</code>/<code>strict_needs</code> là tùy chọn; giữ <code>places[]</code>, <code>needs_status</code> khi có nhu cầu.</td><td>Cả hai nguồn cũ là DB; tool mới chưa có API fallback.</td></tr>
+      <tr><td>Cao, cần hoàn thiện</td><td><code>find_stays</code> + <code>search_hotels</code></td><td><code>find_stays</code> bản chuẩn</td><td>Một bộ lọc giá VND, ngày/số khách tùy yêu cầu; <code>stays[]</code>, <code>price_basis=reference|dated</code>, <code>data_source</code>.</td><td>DB cho giá tham khảo; SerpApi khi thiếu dữ liệu dùng được hoặc cần giá theo ngày/hạng sao. Bộ lọc hai nguồn cần xác minh danh tính khách sạn, giới hạn quota.</td></tr>
+      <tr><td>Trung bình</td><td><code>find_places</code> giai đoạn 1 + <code>find_nearby</code> + <code>search_places</code></td><td><code>find_places</code> nhiều nguồn</td><td><code>places[]</code>; tách <code>place_id</code> Google và <code>ref_id</code> Vietmap, chuẩn hóa <code>gps</code> thành <code>lat/lng</code>.</td><td>DB trước; thiếu POI gần tọa độ thì Vietmap; thiếu rating/review/trạng thái mới thì SerpApi. Chỉ gọi API đáp ứng trường bị thiếu.</td></tr>
+      <tr><td>Có điều kiện</td><td><code>find_festivals</code> + <code>search_events</code></td><td><code>discover_events</code></td><td>Giữ <code>events[]</code> cho sự kiện có ngày diễn ra đã xác nhận; <code>web_sources[]</code> cho trang Tavily chưa xác minh, không nhập lẫn ngày đăng bài.</td><td>DB event trước theo vùng/ngày; không có hoặc thiếu loại sự kiện thì Tavily tìm nguồn web. Chỉ nâng trang web thành sự kiện sau khi trích/xác minh ngày và nơi.</td></tr>
+    </tbody></table></div>
+    <p class="note">Nhóm chi tiết địa điểm (<code>get_place_details</code>, <code>get_place_photos</code>, <code>get_place_reviews</code>), tuyến đường, thời tiết, lịch, chuyển đổi tiền và phân tích vẫn giữ tool riêng vì thao tác hoặc output khác nhau. Chúng nên chia sẻ service, resolver và cache. Hiện có 42 tool; nếu gộp hai tool chỗ ở còn 41; sau nhóm POI nhiều nguồn còn 39; nếu giao diện sự kiện đạt điều kiện xác minh còn 38.</p>
+  </section>
+  <section>
+    <h2>Thứ tự triển khai đề xuất</h2>
+    <ol>
+      <li><b>Chuẩn hóa hợp đồng nguồn và kết quả</b> cho POI, chỗ ở, sự kiện: <code>source</code>, <code>data_as_of</code>, cờ giá tham khảo/giá theo ngày, ID địa điểm, danh sách kết quả và lỗi fallback.</li>
+      <li><b>Đã gộp bộ lọc POI trên DB</b> thành <code>find_places</code>; duy trì test cho cả đường không có và có <code>needs</code>.</li>
+      <li><b>Chuẩn hóa adapter nhiều nguồn</b> cho POI/chỗ ở; chỉ mở giao diện chung khi đã biểu diễn được ID, tọa độ và loại giá mà không mất thông tin.</li>
+      <li><b>Chuyển client rồi mới ngừng alias</b>; việc xóa tên tool ngay sẽ làm hỏng prompt/client đã gọi chúng.</li>
+    </ol>
+  </section>
+  <footer>Đã đối chiếu schema hiện tại bằng MCP client nội bộ; các lần gọi thử HTTP lịch sử diễn ra trước khi gộp hai tool POI. Server vẫn tắt theo yêu cầu của người dùng. Nguồn chính: <a href="../src/auto_register.py">đăng ký tự động</a>, <a href="../src/config/settings.py">cấu hình</a>, <a href="../src/services/travel_db.py">DB</a> và từng file tool ở bảng.</footer>
+</main>
+<script>
+const data = [
+// name, group, function, source, related
+["air_quality","Thời tiết & môi trường","AQI, PM2.5/PM10 và giờ ô nhiễm; tối đa 3 ngày.","API WeatherAPI forecast?aqi=yes; Vietmap có thể chuẩn hóa vị trí.","weather_forecast"],
+["best_time_to_visit","Đánh giá & điều kiện","Giờ/ngày ít đông dựa popular_times và giờ mở cửa.","DB gmaps_place.popular_times, open_hours.","check_opening_hours, get_place_details"],
+["check_opening_hours","Đánh giá & điều kiện","Kiểm tra nhiều điểm có mở tại giờ đến, đủ thời gian tham quan.","DB gmaps_place.open_hours.","get_place_details, best_time_to_visit"],
+["check_place_needs","Đánh giá & điều kiện","Kiểm tra nhiều điểm đáp ứng xe lăn, ăn chay, đỗ xe… với yes/no/unknown.","DB gmaps_place.attributes, attributes_not_available.","find_places, find_stays"],
+["compare_places","Đánh giá & điều kiện","So sánh 2–10 điểm theo rating, giá, khoảng cách, giờ mở, nhu cầu; xuất đầu vào chấm điểm.","DB gmaps_place; tính toán nội bộ.","score_options, rating_insights"],
+["convert_admin_unit","Địa chỉ & hành chính","Đổi đơn vị hành chính Việt Nam cũ ↔ mới.","Dữ liệu offline gói vietnam-provinces.","list_admin_units, geocode_vn"],
+["convert_currency","Tiền & tiện ích","Quy đổi tiền theo tỷ giá mua/bán.","API tỷ giá Vietcombank; API fawazahmed0 dự phòng.","parse_money"],
+["convert_lunar_date","Lịch & sự kiện","Đổi dương lịch ↔ âm lịch Việt Nam, tháng nhuận/can chi.","Thư viện lunar-vn nội bộ.","vn_calendar"],
+["destination_snapshot","Tổng hợp & lập kế hoạch","Tổng quan điểm đến: POI, thời tiết, sự kiện đã lưu trong khoảng ngày.","DB gmaps_place, event, weather_current/forecast.","find_places, weather_forecast, find_festivals"],
+["disaster_alerts","Thời tiết & môi trường","Cảnh báo thiên tai liên quan Việt Nam/khu vực.","API GDACS; Vietmap có thể resolve vị trí.","weather_forecast"],
+["distance_matrix","Tuyến đường","Khoảng cách/thời gian giữa nhiều điểm nguồn và đích.","API Vietmap matrix/v4.","get_route, plan_day_route"],
+["elevation_profile","Tuyến đường","Lấy tuyến và mẫu độ cao, độ dốc dọc đường.","API Vietmap route/v4 + Open Topo Data.","get_route"],
+["export_itinerary","Tổng hợp & lập kế hoạch","Xuất lịch trình dạng iCalendar và URL Google Maps.","Tạo chuỗi nội bộ; không truy cập DB/API.","plan_day_route"],
+["fetch_page","Web & độ tin cậy","Trích nội dung trang từ URL, có thể lọc theo chủ đề.","API Tavily extract.","web_search"],
+["find_airports","Chuyến bay","Tra mã sân bay IATA Việt Nam và gợi ý sân bay khác.","Bảng sân bay nội bộ; API SerpApi google_flights_autocomplete khi cần.","search_flights"],
+["find_alternatives","Tìm địa điểm","Tìm điểm thay thế gần một POI gốc theo loại, rating, khoảng cách.","DB gmaps_place; tính điểm nội bộ.","find_places"],
+["find_festivals","Lịch & sự kiện","Tìm lễ hội/sự kiện đã lưu theo vùng, ngày, từ khóa.","DB event.","search_events, vn_calendar"],
+["find_nearby","Tìm địa điểm","Tìm POI quanh tọa độ/địa chỉ; trả khoảng cách, ref_id.","API Vietmap autocomplete/v4 + place/v4; DB gmaps_place khi API lỗi.","search_places, find_places"],
+["find_places","Tìm địa điểm","Tìm POI đã lưu theo nơi, loại, giá, rating, bán kính; tùy chọn lọc needs.","DB gmaps_place, attributes khi có needs.","search_places, find_nearby, check_place_needs"],
+["find_stays","Chỗ ở","Lọc chỗ ở đã lưu theo giá tham khảo/đêm, loại, vị trí và tiện nghi.","DB gmaps_place.summary, attributes.","search_hotels, find_places"],
+["geocode_vn","Địa chỉ & hành chính","Địa chỉ ↔ tọa độ, chuẩn hóa địa chỉ Việt Nam.","API Vietmap search/v4, place/v4, reverse/v4.","convert_admin_unit, list_admin_units"],
+["get_place_details","Chi tiết địa điểm","Chi tiết một POI: giờ mở, tiện nghi, mức đông, ảnh.","DB gmaps_place khi đủ dữ liệu/ép DB; API SerpApi google_maps place; DB fallback và ghi ảnh.","get_place_photos, check_opening_hours"],
+["get_place_photos","Chi tiết địa điểm","Ảnh đại diện cho nhiều POI; đọc cache rồi bổ sung ảnh thiếu.","DB gmaps_place.thumbnail; API SerpApi google_maps place; ghi DB.","get_place_details"],
+["get_place_reviews","Chi tiết địa điểm","Review, lọc/sắp xếp review và chủ đề đánh giá.","DB gmaps_place khi đủ/ép DB; API SerpApi google_maps_reviews; DB fallback.","rating_insights, get_place_details"],
+["get_route","Tuyến đường","Chỉ đường một tuyến theo phương tiện, quãng đường/thời gian/phí.","API Vietmap route/v4.","distance_matrix, elevation_profile"],
+["google_news","Web & độ tin cậy","Tìm bài tin gần đây qua Google News RSS.","API/feed Google News RSS; mã đánh dấu dùng thử phi thương mại.","web_search, search_events"],
+["list_admin_units","Địa chỉ & hành chính","Liệt kê/tìm tỉnh, phường/xã theo danh mục hành chính mới.","Dữ liệu offline gói vietnam-provinces.","convert_admin_unit"],
+["marine_forecast","Thời tiết & môi trường","Dự báo biển: sóng, gió, thủy triều/điều kiện ven biển.","API WeatherAPI marine; Vietmap có thể chuẩn hóa vị trí.","weather_forecast, sun_and_sky"],
+["mask_pii","Tiền & tiện ích","Che email, điện thoại và thông tin cá nhân trong văn bản.","Regex nội bộ; không DB/API.","—"],
+["parse_money","Tiền & tiện ích","Nhận diện số tiền/đơn vị trong câu chữ, tùy chọn quy VND.","Luật nội bộ; API tỷ giá Vietcombank/fawazahmed0 khi đổi tiền.","convert_currency"],
+["plan_day_route","Tuyến đường","Sắp thứ tự điểm đến trong ngày theo khung giờ và thời lượng.","API Vietmap VRP; DB gmaps_place.open_hours khi truyền ID/ngày.","distance_matrix, get_route"],
+["rating_insights","Đánh giá & điều kiện","Phân tích rating theo số review, tỷ lệ sao và hạng tương đối.","DB gmaps_place.reviews_per_rating và POI cùng loại.","get_place_reviews, compare_places"],
+["score_options","Tổng hợp & lập kế hoạch","Chấm và xếp hạng các phương án theo nhiều tiêu chí (TOPSIS).","Tính toán nội bộ; không DB/API.","compare_places"],
+["search_events","Lịch & sự kiện","Tìm sự kiện mới công bố trên web theo vùng/khoảng ngày.","API Tavily search; DB event khi API lỗi.","find_festivals, web_search"],
+["search_flights","Chuyến bay","Tìm vé máy bay theo chặng/ngày/hành khách.","API SerpApi google_flights; không thấy fallback DB.","find_airports"],
+["search_hotels","Chỗ ở","Giá chỗ ở theo check-in/out, số khách và nguồn đặt phòng.","API SerpApi google_hotels; DB gmaps_place khi API lỗi (giá tham khảo).","find_stays"],
+["search_places","Tìm địa điểm","Tìm Google Maps theo từ khóa, rating/trạng thái mở, trả POI.","API SerpApi google_maps; DB gmaps_place khi API lỗi.","find_nearby, find_places"],
+["source_trust","Web & độ tin cậy","Chấm tín hiệu độ tin cậy tên miền/nguồn web.","API Tranco rank + Wayback CDX; quy tắc nội bộ.","web_search"],
+["sun_and_sky","Thời tiết & môi trường","Mặt trời/mặt trăng, thời điểm mọc lặn và dữ liệu thiên văn.","API WeatherAPI astronomy + forecast; Vietmap có thể chuẩn hóa vị trí.","weather_forecast, marine_forecast"],
+["vn_calendar","Lịch & sự kiện","Lịch ngày nghỉ, lễ, mùa theo khoảng ngày và địa phương.","Rules/overrides JSON nội bộ; Google Calendar ICS tùy cấu hình.","convert_lunar_date, find_festivals"],
+["weather_forecast","Thời tiết & môi trường","Dự báo/lịch sử/tương lai theo ngày, cảnh báo mưa, nhiệt, UV.","API WeatherAPI forecast/future/history; DB weather_current/forecast khi API lỗi.","air_quality, marine_forecast, sun_and_sky"],
+["web_search","Web & độ tin cậy","Tìm web tổng quát, trích snippet và phân loại nguồn.","API Tavily search.","search_events, fetch_page, google_news"]
+];
+const apiTools = new Set([
+  'air_quality','convert_currency','disaster_alerts','distance_matrix','elevation_profile','fetch_page',
+  'find_airports','find_nearby','geocode_vn','get_place_details','get_place_photos','get_place_reviews',
+  'get_route','google_news','marine_forecast','parse_money','plan_day_route','search_events',
+  'search_flights','search_hotels','search_places','source_trust','sun_and_sky','vn_calendar',
+  'weather_forecast','web_search'
+]);
+const dbTools = new Set([
+  'best_time_to_visit','check_opening_hours','check_place_needs','compare_places',
+  'destination_snapshot','find_alternatives','find_festivals','find_nearby','find_places',
+  'find_stays','get_place_details','get_place_photos','get_place_reviews','plan_day_route',
+  'rating_insights','search_events','search_hotels','search_places','weather_forecast'
+]);
+const otherTools = new Set([
+  'convert_admin_unit','convert_lunar_date','export_itinerary','find_airports','list_admin_units',
+  'mask_pii','parse_money','score_options','vn_calendar'
+]);
+const sourceTypes = name => [
+  ...(apiTools.has(name) ? ['API'] : []),
+  ...(dbTools.has(name) ? ['DB'] : []),
+  ...(otherTools.has(name) ? ['Khác'] : [])
+];
+const groups=[...new Set(data.map(x=>x[1]))].sort((a,b)=>a.localeCompare(b,'vi'));
+const sel=document.querySelector('#group'),sourceSel=document.querySelector('#source-type');
+for(const g of groups){const o=document.createElement('option');o.value=g;o.textContent=g;sel.append(o)}
+document.querySelector('#total').textContent=data.length;
+document.querySelector('#api-count').textContent=apiTools.size;
+document.querySelector('#db-count').textContent=dbTools.size;
+document.querySelector('#other-count').textContent=otherTools.size;
+function render(){
+  const q=document.querySelector('#q').value.toLocaleLowerCase('vi').trim(),g=sel.value,source=sourceSel.value,body=document.querySelector('#rows');
+  body.replaceChildren();let n=0;
+  for(const item of data){
+    const types=sourceTypes(item[0]);
+    if(g&&item[1]!==g)continue;
+    if(source&&!types.includes(source))continue;
+    if(q&&!(item.join(' ')+' '+types.join(' ')).toLocaleLowerCase('vi').includes(q))continue;
+    n++;const tr=document.createElement('tr');
+    const values=[String(n),item[0],item[1],item[2],types,item[3],item[4]];
+    for(let i=0;i<values.length;i++){
+      const td=document.createElement('td');
+      if(i===1){const a=document.createElement('a');a.href='../src/tools/'+item[0]+'.py';a.textContent=item[0];td.append(a)}
+      else if(i===2){const b=document.createElement('span');b.className='badge';b.textContent=values[i];td.append(b)}
+      else if(i===4){for(const type of types){const b=document.createElement('span');b.className='badge '+(type==='API'?'medium':type==='DB'?'high':'low');b.textContent=type;td.append(b,' ')}}
+      else td.textContent=values[i];
+      tr.append(td);
+    }
+    body.append(tr);
+  }
+  document.querySelector('#visible').textContent=`${n}/${data.length} tool`;
+}
+document.querySelector('#q').addEventListener('input',render);
+sel.addEventListener('change',render);
+sourceSel.addEventListener('change',render);
+render();
+</script>
+</body>
+</html>
