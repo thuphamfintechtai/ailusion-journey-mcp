@@ -8,6 +8,7 @@ import structlog
 from fastmcp import FastMCP
 from pydantic import Field
 
+from ..services.osrm_client import osrm_route
 from ..services.vietmap_client import VietmapError, vietmap_client
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
@@ -68,13 +69,36 @@ def register_get_route_tool(mcp: FastMCP):
                 thoi_diem = dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
             diem = await resolve_nhieu(points)
-            data = await vietmap_client.route(
-                diem,
-                vehicle,
-                annotations="toll",
-                avoid="ferry" if avoid_ferry else None,
-                time=thoi_diem,
-            )
+            try:
+                data = await vietmap_client.route(
+                    diem,
+                    vehicle,
+                    annotations="toll",
+                    avoid="ferry" if avoid_ferry else None,
+                    time=thoi_diem,
+                )
+            except VietmapError as e:
+                # Vietmap hết credit / lỗi: chỉ đường bằng OSRM (OpenStreetMap) để vẫn có đường xe
+                # chạy thật, km, phút; không có phí cầu đường và các bước rẽ.
+                logger.warning("get_route: Vietmap lỗi, dùng OSRM", error=str(e))
+                du_phong = await osrm_route([(d.lat, d.lng) for d in diem])
+                if du_phong is None:
+                    raise
+                return drop_empty(
+                    {
+                        "status": "success",
+                        "vehicle": vehicle,
+                        "source": "osrm",
+                        "points": [gon_diem(d) for d in diem],
+                        "distance_km": round(du_phong["distance_m"] / 1000, 2),
+                        "duration_min": round(du_phong["duration_s"] / 60, 1),
+                        "path": du_phong["polyline"] if include_path else None,
+                        "path_precision": 5 if include_path else None,
+                        "google_maps_url": link_google_maps(diem, vehicle),
+                        "note": "Đường đi từ OpenStreetMap (OSRM, ô tô) vì Vietmap tạm không dùng "
+                        "được; chưa có phí cầu đường.",
+                    }
+                )
             paths = data.get("paths") or []
             if not paths:
                 return drop_empty({"status": "success", "route": None, "note": "Không tìm được đường đi"})
