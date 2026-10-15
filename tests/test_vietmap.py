@@ -240,3 +240,24 @@ async def test_get_route_kem_hinh_duong_di():
 
     khong = await _goi("get_route", {"points": ["16.06,108.22", "16.05,108.24"]})
     assert "path" not in khong and "path_precision" not in khong
+
+
+@respx.mock
+async def test_get_route_het_credit_vietmap_thi_dung_osrm():
+    # Vietmap trả 423 "exceeded credit" (cả 2 key hết credit chỉ đường): vẫn có đường xe chạy thật.
+    respx.get(f"{BASE}/route/v4").mock(
+        return_value=httpx.Response(423, text="Your request is limited: exceeded credit.")
+    )
+    osrm = respx.get(url__startswith="https://router.project-osrm.org/route/v1/driving/").mock(
+        return_value=httpx.Response(
+            200,
+            json={"code": "Ok", "routes": [{"distance": 22900, "duration": 2700, "geometry": "_p~iF~ps|U"}]},
+        )
+    )
+    kq = await _goi(
+        "get_route", {"points": ["11.9404,108.4583", "12.0459,108.4419"], "include_path": True}
+    )
+    assert kq["status"] == "success" and kq["source"] == "osrm"
+    assert kq["distance_km"] == 22.9 and kq["duration_min"] == 45.0
+    assert kq["path"] == "_p~iF~ps|U" and kq["path_precision"] == 5
+    assert "108.4583,11.9404;108.4419,12.0459" in str(osrm.calls.last.request.url)  # lng,lat
