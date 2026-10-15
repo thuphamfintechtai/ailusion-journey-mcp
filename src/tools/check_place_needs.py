@@ -27,7 +27,7 @@ def register_check_place_needs_tool(mcp: FastMCP):
             "phí vào cổng, thường phải xếp hàng). Không tốn quota.\n\n"
             "Bỏ trống `needs` để lấy mọi thông tin đã biết chắc (yes / no) của từng điểm.\n"
             "Khi nào dùng: rà lịch trình trước khi chốt cho người dùng xe lăn / có con nhỏ / ăn chay; "
-            "điểm 'no' nên thay bằng find_alternatives. Tìm điểm mới theo nhu cầu -> find_places_by_needs."
+            "điểm 'no' nên thay bằng find_alternatives. Tìm điểm mới theo nhu cầu -> find_places với needs."
         ),
         tags={"journey", "db", "maps", "accessibility", "planning"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "postgres:gmaps_place.attributes"},

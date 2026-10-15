@@ -61,7 +61,7 @@ def register_get_place_photos_tool(mcp: FastMCP):
         title="Get Place Photos (Ảnh địa điểm)",
         description=(
             "Lấy ảnh đại diện (URL) cho nhiều địa điểm một lần, để hiển thị lịch trình.\n\n"
-            "`places`: place_id ('ChIJ...') lấy từ browse_places / find_places_by_needs / search_places; "
+            "`places`: place_id ('ChIJ...') lấy từ find_places / search_places; "
             "cũng nhận cid, data_id ('0x...') hoặc tên địa điểm (nên kèm `destination`).\n"
             "Đọc dữ liệu đã lưu trước; điểm chưa có ảnh thì tra SerpApi (tối đa 12 điểm / lần gọi, "
             "mỗi điểm tốn 1 lượt quota) rồi lưu lại cho lần sau. `source`='db' chỉ đọc DB (không tốn quota).\n"

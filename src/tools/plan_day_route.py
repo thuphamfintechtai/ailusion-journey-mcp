@@ -28,8 +28,8 @@ _TIEN_TO_REF = ("auto:", "geocode:", "vm:")
 
 class Stop(BaseModel):
     place: str = Field(
-        description="Điểm đến: 'lat,lng', ref_id, place_id ('ChIJ...') lấy từ browse_places / "
-        "find_places_by_needs, hoặc tên kèm tỉnh."
+        description="Điểm đến: 'lat,lng', ref_id, place_id ('ChIJ...') lấy từ find_places, "
+        "hoặc tên kèm tỉnh."
     )
     visit_minutes: int = Field(default=60, ge=0, le=600, description="Thời gian ở lại điểm này (phút).")
     open: str | None = Field(
@@ -82,7 +82,7 @@ def register_plan_day_route_tool(mcp: FastMCP):
             "xếp kịp (kèm lý do) để đề xuất bỏ hoặc dời sang ngày khác.\n\n"
             "Truyền `date` để tool "
             "tự lấy giờ mở cửa đã lưu đúng thứ (miễn phí) cho điểm chưa có open / close; điểm là place_id "
-            "(từ browse_places / find_places_by_needs) dùng luôn toạ độ đã lưu. Chỉ gọi get_place_details "
+            "(từ find_places) dùng luôn toạ độ đã lưu. Chỉ gọi get_place_details "
             "cho điểm trong `opening_hours_used` thiếu `hours_that_day`.\n"
             "Chi phí: số điểm transaction Vietmap mỗi lần gọi.\n\n" + MO_TA_DIEM
         ),

@@ -204,13 +204,12 @@ Tool đọc dữ liệu đã cào sẵn trong Postgres (DB `MLAI-AILUSION`, cấ
 
 | Tool | Bảng | Dùng cho |
 |---|---|---|
-| `browse_places` | `gmaps_place` | Duyệt địa điểm theo điểm đến / loại / rating / bán kính / xe lăn / khoảng giá; trả kèm `price_vnd`, `rating_adjusted` và `thumbnail` |
+| `find_places` | `gmaps_place` + `attributes` khi có `needs` | Tìm địa điểm theo điểm đến / loại / rating / bán kính / xe lăn / giá; tùy chọn lọc đồng thời nhu cầu (ăn chay, đỗ xe, trẻ em, Wi-Fi...). Trả `places[]`, `needs_status` khi có `needs`, `price_vnd`, `rating_adjusted` và `thumbnail`. |
 | `check_opening_hours` | `gmaps_place.open_hours` | Nhiều điểm có mở vào giờ dự định không, đủ thời gian ở lại không |
 | `best_time_to_visit` | `gmaps_place.popular_times` | Giờ / ngày vắng khách nhất trong giờ mở cửa |
 | `find_festivals` | `event` | Lễ hội, sự kiện theo tỉnh (sau sáp nhập) và khoảng ngày |
 | `destination_snapshot` | cả 3 nhóm bảng | Tổng quan điểm đến: thời tiết, top địa điểm theo nhóm, lễ hội |
 | `find_stays` | `gmaps_place.summary` | Chỗ ở theo ngân sách / đêm (giá tham khảo lúc cào), loại, rating, bán kính, mặt bằng giá p25 / trung vị / p75 |
-| `find_places_by_needs` | `gmaps_place.attributes` | Địa điểm đáp ứng cùng lúc nhiều nhu cầu: xe lăn, trẻ em, ăn chay, đỗ ô tô, mang chó, Wi-Fi, lãng mạn, rooftop... (39 nhu cầu), lọc thêm theo khoảng giá |
 | `check_place_needs` | `attributes` + `attributes_not_available` | Rà từng điểm trong lịch trình: có / không / chưa rõ cho mỗi nhu cầu, kèm lưu ý (chỉ nhận tiền mặt, phải đặt chỗ, phí vào cổng) |
 | `compare_places` | `gmaps_place` | So sánh 2-10 điểm (rating hiệu chỉnh, % 1 sao, giá, mức đông, khoảng cách, nhu cầu), xuất sẵn đầu vào cho `score_options` |
 | `rating_insights` | `reviews_per_rating` + `reviews` | Rating có đáng tin không: phân bố sao, phân cực, xếp hạng trong cùng loại, độ mới, review điểm thấp |

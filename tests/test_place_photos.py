@@ -1,4 +1,4 @@
-"""Test ảnh địa điểm: thumbnail trong browse_places / search_places / get_place_details và tool
+"""Test ảnh địa điểm: thumbnail trong find_places / search_places / get_place_details và tool
 get_place_photos (DB trước, thiếu thì tra SerpApi rồi ghi lại). Không gọi DB thật, HTTP mock bằng respx."""
 
 import asyncio
@@ -76,8 +76,8 @@ def test_danh_sach_rut_gon_co_thumbnail():
     assert "thumbnail" in _COT_RUT_GON
 
 
-async def test_browse_places_tra_thumbnail(db):
-    kq = await _goi("browse_places", {"destination": "Huế"})
+async def test_find_places_tra_thumbnail(db):
+    kq = await _goi("find_places", {"destination": "Huế"})
     theo_ten = {p["name"]: p for p in kq["places"]}
     assert theo_ten["Chùa Thiên Mụ"]["thumbnail"] == "https://img/a.jpg"
     assert "thumbnail" not in theo_ten["Chùa Từ Hiếu"]  # null bị drop_empty bỏ

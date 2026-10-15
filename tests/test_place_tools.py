@@ -115,7 +115,7 @@ def db(monkeypatch):
         cids_matching.nhu_cau = nhu_cau
         return goc_dieu_kien(nhu_cau, bat_dau, chac_chan)
 
-    for mod in ("src.tools._cho_o", "src.tools.find_places_by_needs"):
+    for mod in ("src.tools._cho_o", "src.tools.find_places"):
         monkeypatch.setattr(f"{mod}.dieu_kien_sql", ghi_nhu_cau)
     monkeypatch.setattr(travel_db, "fetch", fetch)
     monkeypatch.setattr(travel_db, "cids_matching", cids_matching)
@@ -127,6 +127,18 @@ async def _goi(ten: str, args: dict) -> dict:
     async with Client(mcp) as c:
         r = await c.call_tool(ten, args, raise_on_error=False)
     return r.structured_content
+
+
+async def test_find_places_khong_doc_thuoc_tinh_khi_khong_co_needs(db, monkeypatch):
+    async def khong_can_thuoc_tinh(*args, **kwargs):
+        pytest.fail("Tìm địa điểm thường không được đọc thuộc tính chi tiết")
+
+    monkeypatch.setattr(travel_db, "cids_matching", khong_can_thuoc_tinh)
+    monkeypatch.setattr(travel_db, "details_by_cid", khong_can_thuoc_tinh)
+    result = await _goi("find_places", {"destination": "Huế", "limit": 1})
+    assert result["status"] == "success"
+    assert len(result["places"]) == 1
+    assert "needs_status" not in result["places"][0]
 
 
 # --- hàm thuần --------------------------------------------------------------------
@@ -261,24 +273,24 @@ async def test_search_hotels_fallback_find_stays(db, monkeypatch):
     assert kq["data_source"] == "ailusion_db" and kq["hotels"][0]["name"] == "Mộc Homestay"
 
 
-# --- find_places_by_needs / check_place_needs ---------------------------------------
+# --- find_places needs / check_place_needs ---------------------------------------
 
 
-async def test_find_places_by_needs(db):
-    kq = await _goi("find_places_by_needs", {"destination": "Huế", "needs": ["vegetarian", "romantic"]})
+async def test_find_places_needs(db):
+    kq = await _goi("find_places", {"destination": "Huế", "needs": ["vegetarian", "romantic"]})
     assert [p["name"] for p in kq["places"]] == ["Nhà hàng Chay Liên Hoa"]
     assert kq["places"][0]["heads_up"] == ["Bắt buộc đặt chỗ trước"]
 
 
-async def test_find_places_by_needs_khong_chac_chan_loai_no(db):
-    kq = await _goi("find_places_by_needs", {"destination": "Huế", "needs": ["wheelchair"], "category": "Chùa"})
+async def test_find_places_needs_khong_chac_chan_loai_no(db):
+    kq = await _goi("find_places", {"destination": "Huế", "needs": ["wheelchair"], "category": "Chùa"})
     assert {p["name"] for p in kq["places"]} == {"Chùa Thiên Mụ", "Chùa Từ Hiếu"}
-    kq = await _goi("find_places_by_needs", {"destination": "Huế", "needs": ["wheelchair"], "category": "Chùa", "strict_needs": False})
+    kq = await _goi("find_places", {"destination": "Huế", "needs": ["wheelchair"], "category": "Chùa", "strict_needs": False})
     assert "Chùa Diệu Đế" not in {p["name"] for p in kq["places"]}
 
 
-async def test_find_places_by_needs_khong_co_ket_qua_goi_y(db):
-    kq = await _goi("find_places_by_needs", {"destination": "Huế", "needs": ["pets", "rooftop"]})
+async def test_find_places_needs_khong_co_ket_qua_goi_y(db):
+    kq = await _goi("find_places", {"destination": "Huế", "needs": ["pets", "rooftop"]})
     assert kq["places"] == [] and "strict_needs=false" in kq["note"]
 
 
@@ -355,7 +367,7 @@ async def test_find_alternatives_uu_tien_cung_loai_it_dong(db):
 
 async def test_khong_chac_chan_xep_noi_dap_ung_nhieu_len_truoc(db):
     # Chay Liên Hoa đáp ứng chắc 2/2 nhu cầu nên đứng đầu dù kém phổ biến hơn các nơi chưa rõ (0/2).
-    kq = await _goi("find_places_by_needs", {"destination": "Huế", "needs": ["vegetarian", "romantic"], "strict_needs": False})
+    kq = await _goi("find_places", {"destination": "Huế", "needs": ["vegetarian", "romantic"], "strict_needs": False})
     assert kq["places"][0]["name"] == "Nhà hàng Chay Liên Hoa"
 
 
@@ -366,7 +378,7 @@ async def test_nhieu_diem_den_co_note_o_tool_moi(db, monkeypatch):
     monkeypatch.setattr(travel_db, "find_destinations", hai_noi)
     kq = await _goi("find_stays", {"destination": "Huế - Hà Nội"})
     assert "nhiều điểm đến" in kq["note"]
-    kq = await _goi("find_places_by_needs", {"destination": "Huế", "lat": 16.46, "lng": 107.59, "needs": ["kids"]})
+    kq = await _goi("find_places", {"destination": "Huế", "lat": 16.46, "lng": 107.59, "needs": ["kids"]})
     assert "bỏ qua `destination`" in kq["note"]
 
 
@@ -400,40 +412,40 @@ def test_bieu_thuc_so_yes_danh_so_noi_tiep():
 # --- lọc giá, giá đã quy ra VND, rating hiệu chỉnh ----------------------------------
 
 
-async def test_browse_places_loc_gia_giu_noi_chua_co_gia(db):
-    kq = await _goi("browse_places", {"destination": "Huế", "category": "Nhà hàng", "max_price_vnd": 100000})
+async def test_find_places_loc_gia_giu_noi_chua_co_gia(db):
+    kq = await _goi("find_places", {"destination": "Huế", "category": "Nhà hàng", "max_price_vnd": 100000})
     # Bún bò ~50k lọt, nhà hàng chay ~150k bị loại, Ốc Phân Cực chưa có giá vẫn được giữ.
     assert sorted(p["name"] for p in kq["places"]) == ["Bún bò O Cương", "Ốc Phân Cực"]
 
 
-async def test_browse_places_loc_gia_chat_va_gia_toi_thieu(db):
+async def test_find_places_loc_gia_chat_va_gia_toi_thieu(db):
     kq = await _goi(
-        "browse_places", {"destination": "Huế", "category": "Nhà hàng", "max_price_vnd": 100000, "strict_price": True}
+        "find_places", {"destination": "Huế", "category": "Nhà hàng", "max_price_vnd": 100000, "strict_price": True}
     )
     assert [p["name"] for p in kq["places"]] == ["Bún bò O Cương"]
     kq = await _goi(
-        "browse_places", {"destination": "Huế", "category": "Nhà hàng", "min_price_vnd": 100000, "strict_price": True}
+        "find_places", {"destination": "Huế", "category": "Nhà hàng", "min_price_vnd": 100000, "strict_price": True}
     )
     assert [p["name"] for p in kq["places"]] == ["Nhà hàng Chay Liên Hoa"]
 
 
-async def test_browse_places_khoang_gia_nguoc_bao_loi(db):
-    kq = await _goi("browse_places", {"destination": "Huế", "min_price_vnd": 200000, "max_price_vnd": 100000})
+async def test_find_places_khoang_gia_nguoc_bao_loi(db):
+    kq = await _goi("find_places", {"destination": "Huế", "min_price_vnd": 200000, "max_price_vnd": 100000})
     assert kq["status"] == "error"
 
 
-async def test_browse_places_tra_gia_vnd_va_rating_hieu_chinh(db):
-    kq = await _goi("browse_places", {"destination": "Huế", "query": "Liên Hoa"})
+async def test_find_places_tra_gia_vnd_va_rating_hieu_chinh(db):
+    kq = await _goi("find_places", {"destination": "Huế", "query": "Liên Hoa"})
     chay = kq["places"][0]
     assert chay["price"] == "100-200 N ₫"
     assert chay["price_vnd"] == {"kind": "per_person", "min_vnd": 100000, "max_vnd": 200000, "vnd": 150000}
     assert chay["rating_adjusted"] == rating_hieu_chinh(4.6, 700)
 
 
-async def test_find_places_by_needs_loc_gia(db):
-    kq = await _goi("find_places_by_needs", {"destination": "Huế", "needs": ["vegetarian"], "max_price_vnd": 100000})
+async def test_find_places_needs_loc_gia(db):
+    kq = await _goi("find_places", {"destination": "Huế", "needs": ["vegetarian"], "max_price_vnd": 100000})
     assert kq["places"] == []
-    kq = await _goi("find_places_by_needs", {"destination": "Huế", "needs": ["vegetarian"], "max_price_vnd": 200000})
+    kq = await _goi("find_places", {"destination": "Huế", "needs": ["vegetarian"], "max_price_vnd": 200000})
     assert [p["name"] for p in kq["places"]] == ["Nhà hàng Chay Liên Hoa"]
 
 
