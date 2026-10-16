@@ -7,10 +7,10 @@ from fastmcp import FastMCP
 from pydantic import Field
 
 from ..services.serpapi_client import SerpApiError, serpapi_client
-from ..services.travel_db import travel_db
+from ..services.travel_db import TravelDbError, travel_db
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
-from ._db_common import fallback_db, gon_dia_diem, loc_dia_diem, moi_nhat
+from ._db_common import fallback_db, gon_dia_diem, loc_dia_diem, moi_nhat, truong_sao_tin_duoc
 from ._serpapi_common import khong_co_ket_qua, loi_serpapi, tham_so_vn
 
 logger = structlog.get_logger(__name__)
@@ -54,12 +54,18 @@ async def _tu_db(
     }
 
 
-def _gon_dia_diem(p: dict[str, Any]) -> dict[str, Any]:
+def _sao(p: dict[str, Any], dest: str | None) -> dict[str, Any]:
+    """Dòng SerpApi -> dạng `truong_sao_tin_duoc` đọc được (số review ở `reviews`, loại ở `type`)."""
+    return {"rating": p.get("rating"), "review_count": p.get("reviews"), "category": p.get("type"), "_dest": dest}
+
+
+def _gon_dia_diem(p: dict[str, Any], dest: str | None = None) -> dict[str, Any]:
     return {
         "name": p.get("title"),
         "place_id": p.get("place_id"),
         "data_id": p.get("data_id"),
         "rating": p.get("rating"),
+        **truong_sao_tin_duoc(_sao(p, dest)),
         "reviews": p.get("reviews"),
         "price": p.get("price"),
         "type": p.get("type"),
@@ -135,13 +141,19 @@ def register_search_places_tool(mcp: FastMCP):
                 ket_qua = [data["place_results"]]
             if min_rating is not None:
                 ket_qua = [p for p in ket_qua if (p.get("rating") or 0) >= min_rating]
+            # Giữ thứ tự Google (không sắp lại theo Bayes, xem _db_common.diem_pho_bien); chỉ
+            # gắn sao tin được để bước chấm dùng.
+            try:
+                dest = await travel_db.find_destination(query)
+            except TravelDbError:  # DB lỗi: tiên nghiệm theo loại hình toàn quốc
+                dest = None
 
             return drop_empty(
                 {
                     "status": "success",
                     "query": query,
                     "total_found": len(ket_qua),
-                    "places": [_gon_dia_diem(p) for p in ket_qua[:limit]],
+                    "places": [_gon_dia_diem(p, dest) for p in ket_qua[:limit]],
                     "note": ghi_chu,
                 }
             )

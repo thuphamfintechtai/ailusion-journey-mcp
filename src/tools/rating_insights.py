@@ -39,7 +39,7 @@ async def _thu_hang_cung_loai(p: dict[str, Any], diem: float | None) -> dict[str
         if x["_dest"] == dau["_dest"]
         and x.get("category") == p.get("category")
         and not x.get("_ngoai_vung")
-        and (r := rating_hieu_chinh(x.get("rating"), x.get("review_count"))) is not None
+        and (r := rating_hieu_chinh(x)) is not None
     ]
     if len(cung) < 5:
         return None
@@ -78,7 +78,7 @@ def register_rating_insights_tool(mcp: FastMCP):
 
             n = p.get("review_count") or 0
             sao = ty_le_sao(p.get("reviews_per_rating"))
-            diem = rating_hieu_chinh(p.get("rating"), n)
+            diem = rating_hieu_chinh(p)
             nhan_xet: list[str] = []
             phan_cuc = False
             if sao:

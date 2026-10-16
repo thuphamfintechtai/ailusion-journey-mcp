@@ -16,6 +16,7 @@ from ._db_common import (
     loc_dia_diem,
     moi_nhat,
     rating_hieu_chinh,
+    truong_sao_tin_duoc,
 )
 from ._nhu_cau import NHU_CAU, bieu_thuc_so_yes, dieu_kien_sql, trang_thai_nhu_cau
 
@@ -89,11 +90,11 @@ async def tim_cho_o(
     if sort_by == "price_low":
         ung_vien.sort(key=lambda p: (gia_phong(p) is None, gia_phong(p) or 0))
     elif sort_by == "rating":
-        ung_vien.sort(key=lambda p: -(rating_hieu_chinh(p.get("rating"), p.get("review_count")) or 0))
+        ung_vien.sort(key=lambda p: -(rating_hieu_chinh(p) or 0))
     elif sort_by == "value":
         # Điểm đáng tiền: rating hiệu chỉnh trên mỗi triệu đồng, chỉ xét chỗ có giá.
         co_gia = [p for p in ung_vien if gia_phong(p)]
-        co_gia.sort(key=lambda p: -((rating_hieu_chinh(p.get("rating"), p.get("review_count")) or 0) / (gia_phong(p) / 1e6) ** 0.5))
+        co_gia.sort(key=lambda p: -((rating_hieu_chinh(p) or 0) / (gia_phong(p) / 1e6) ** 0.5))
         ung_vien = co_gia
     elif sort_by != "distance":
         ung_vien.sort(key=lambda p: -diem_pho_bien(p))
@@ -126,7 +127,7 @@ def gon_cho_o(p: dict[str, Any]) -> dict[str, Any]:
         "category": p.get("category"),
         "price_per_night_vnd": gia_phong(p),
         "rating": p.get("rating") or None,
-        "rating_adjusted": rating_hieu_chinh(p.get("rating"), p.get("review_count")),
+        **truong_sao_tin_duoc(p),
         "reviews": p.get("review_count"),
         "address": p.get("address"),
         "lat": p.get("lat"),

@@ -17,6 +17,7 @@ from ._db_common import (
     muc_dong_luc,
     nhom_dia_diem,
     rating_hieu_chinh,
+    truong_sao_tin_duoc,
     trang_thai_mo_cua,
 )
 from ._nhu_cau import NHU_CAU, NhuCau, danh_gia, them_nhan_nhu_cau
@@ -123,7 +124,7 @@ def register_find_alternatives_tool(mcp: FastMCP):
                         "same_category": cung_loai == 2,
                         "distance_km": round(kc, 2),
                         "rating": p.get("rating") or None,
-                        "rating_adjusted": rating_hieu_chinh(p.get("rating"), p.get("review_count")),
+                        **truong_sao_tin_duoc(p),
                         "reviews": p.get("review_count"),
                         "open_status": mo.get("status") if mo else None,
                         "open_until": mo.get("open_until") if mo else None,
@@ -139,7 +140,7 @@ def register_find_alternatives_tool(mcp: FastMCP):
                             0 if (mo is None or mo["status"] == "open") else 1,
                             sum(1 for v in tt.values() if v != "yes"),
                             (muc if muc is not None else 50) / 25,
-                            -(rating_hieu_chinh(p.get("rating"), p.get("review_count")) or 0),
+                            -(rating_hieu_chinh(p) or 0),
                             kc,
                         ),
                     }
