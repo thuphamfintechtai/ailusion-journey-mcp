@@ -6,7 +6,8 @@ import structlog
 from fastmcp import FastMCP
 from pydantic import Field
 
-from ..services.vietmap_client import VietmapError, vietmap_client
+from ..services.travel_db import TravelDbError, khoang_cach_km, travel_db
+from ..services.vietmap_client import VietmapError, diem_tu_db, vietmap_client
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
 from ._vietmap_common import loi_vietmap
@@ -31,6 +32,39 @@ def _gon(r: dict[str, Any], toa_do: dict[str, Any] | None) -> dict[str, Any]:
         "lat": (toa_do or {}).get("lat") or r.get("lat"),
         "lng": (toa_do or {}).get("lng") or r.get("lng"),
         "ref_id": r.get("ref_id"),
+    }
+
+
+async def _tu_db(address: str | None, lat: float | None, lng: float | None) -> dict[str, Any] | None:
+    """Vietmap lỗi (VD hết credit HTTP 423): tra trong dữ liệu đã lưu.
+    Theo địa chỉ: địa điểm trùng tên, không có thì tâm điểm đến. Ngược (toạ độ): địa chỉ của
+    địa điểm đã lưu gần nhất, kèm khoảng cách tới đó."""
+    if lat is not None and lng is not None:
+        try:
+            ds = [p for p in await travel_db.places() if p.get("lat") is not None and p.get("address")]
+        except TravelDbError:
+            return None
+        if not ds:
+            return None
+        gan = min(ds, key=lambda p: khoang_cach_km(lat, lng, p["lat"], p["lng"]))
+        km = khoang_cach_km(lat, lng, gan["lat"], gan["lng"])
+        return {
+            "status": "success",
+            "mode": "reverse",
+            "source": "ailusion_db",
+            "results": [{"name": gan.get("title"), "address_new": gan.get("address"), "lat": lat, "lng": lng}],
+            "note": f"Vietmap lỗi; địa chỉ của chỗ đã lưu gần nhất ({gan.get('title')}, cách {km:.2f} km).",
+        }
+    d = await diem_tu_db(address or "")
+    if d is None:
+        return None
+    return {
+        "status": "success",
+        "mode": "forward",
+        "query": address,
+        "source": "ailusion_db",
+        "results": [{"name": d.label, "lat": round(d.lat, 6), "lng": round(d.lng, 6)}],
+        "note": f"Vietmap lỗi; toạ độ theo dữ liệu đã lưu: {d.label}.",
     }
 
 
@@ -94,6 +128,8 @@ def register_geocode_vn_tool(mcp: FastMCP):
 
         except VietmapError as e:
             logger.error("geocode_vn gọi Vietmap thất bại", error=str(e))
+            if kq := await _tu_db(address.strip() if address else None, lat, lng):
+                return kq
             return loi_vietmap(e, input_context)
         except Exception as e:
             logger.error("geocode_vn thất bại", error=str(e), exc_info=True)

@@ -71,7 +71,15 @@ def ten_hien_thi(khoa: str, mac_dinh: str | None = None) -> str:
     return _TEN_HIEN_THI.get(khoa) or (mac_dinh or khoa).replace("-", " ").title()
 
 
-# Điểm đến -> tỉnh sau sáp nhập 1/7/2025, để lọc lễ hội theo `event.address_region`.
+def thuoc_diem_den(p: dict[str, Any], khoa: str) -> bool:
+    """Địa điểm thuộc điểm đến `khoa`: cùng khoá và trong vùng, hoặc là nơi nhỏ trong tỉnh
+    (`_noi`, VD Hội An trong dữ liệu Đà Nẵng — xem `_TINH_CUA`)."""
+    return (p["_dest"] == khoa and not p.get("_ngoai_vung")) or khoa in p.get("_noi", ())
+
+
+# Điểm đến -> tỉnh sau sáp nhập 1/7/2025, để lọc lễ hội theo `event.address_region`. Cũng là các
+# "nơi nhỏ" mà DB cào chung với tỉnh (Hội An trong 'danang', Phú Quốc trong 'angiang'…): tìm theo
+# nơi nhỏ thì lấy chỗ của tỉnh có tên nơi đó trong địa chỉ (`_noi`, `thuoc_diem_den`).
 _TINH_CUA = {
     "dalat": "lamdong",
     "muine": "lamdong",
@@ -297,6 +305,10 @@ class TravelDb:
             ds = await self.fetch(f"SELECT {_COT_RUT_GON} FROM gmaps_place")
             for p in ds:
                 p["_dest"] = khoa_diem_den(p.get("destination"))
+                dia_chi = bo_dau(p.get("address") or "").replace(" ", "")
+                p["_noi"] = tuple(
+                    noi for noi, tinh in _TINH_CUA.items() if tinh == p["_dest"] and noi in dia_chi
+                )
                 # seed_query là câu người cào gõ ('các nhà hàng tốt nhất ở Hà Nội'), không mô tả
                 # địa điểm nên không đưa vào văn bản để khớp, trừ khi Google trả đúng một kết quả.
                 truong = ["title", "category", "summary"] + (["seed_query"] if p.get("best_match") else [])
@@ -319,9 +331,14 @@ class TravelDb:
         return await self._cache_hoac_tai("places", tai)
 
     async def destinations(self) -> dict[str, dict[str, Any]]:
-        """{khoá: {name, count, lat, lng}}: tâm = trung vị toạ độ, chỉ đếm địa điểm trong vùng."""
+        """{khoá: {name, count, lat, lng}}: tâm = trung vị toạ độ, chỉ đếm địa điểm trong vùng.
+        Tính lại khi `places()` nạp bản mới (giữ theo đúng danh sách đang cache)."""
+        tat_ca = await self.places()
+        da_tinh = getattr(self, "_diem_den_tinh_san", None)
+        if da_tinh is not None and da_tinh[0] is tat_ca:
+            return da_tinh[1]
         nhom: dict[str, list[dict[str, Any]]] = {}
-        for p in await self.places():
+        for p in tat_ca:
             if not p.get("_ngoai_vung"):
                 nhom.setdefault(p["_dest"], []).append(p)
         ket_qua = {}
@@ -333,6 +350,19 @@ class TravelDb:
                 "lat": statistics.median(p["lat"] for p in co_toa_do) if co_toa_do else None,
                 "lng": statistics.median(p["lng"] for p in co_toa_do) if co_toa_do else None,
             }
+        # Nơi nhỏ cào chung với tỉnh (Hội An, Phú Quốc, Sa Pa…): thành điểm đến riêng, gồm cả chỗ
+        # đã có khoá riêng (Đà Lạt: 'dalat' + chỗ trong 'lamdong' có Đà Lạt trong địa chỉ).
+        for noi in _TINH_CUA:
+            ds = [p for p in tat_ca if thuoc_diem_den(p, noi)]
+            co_toa_do = [p for p in ds if p.get("lat") is not None]
+            if co_toa_do:
+                ket_qua[noi] = {
+                    "name": ten_hien_thi(noi, ds[0]["destination"]),
+                    "count": len(ds),
+                    "lat": statistics.median(p["lat"] for p in co_toa_do),
+                    "lng": statistics.median(p["lng"] for p in co_toa_do),
+                }
+        self._diem_den_tinh_san = (tat_ca, ket_qua)
         return ket_qua
 
     async def find_destination(self, text: str | None) -> str | None:
@@ -364,7 +394,7 @@ class TravelDb:
             return []
         ung_vien = []
         for p in await self.places():
-            if dest and (p["_dest"] != dest or p.get("_ngoai_vung")):
+            if dest and not thuoc_diem_den(p, dest):
                 continue
             tieu_de_cd = " ".join(tach_tu(p.get("title")))
             tieu_de_kd = bo_dau(p.get("title") or "")

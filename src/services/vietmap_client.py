@@ -24,6 +24,8 @@ import structlog
 
 from ..config.settings import settings
 from ..utils.text import bo_dau
+from .osrm_client import osrm_table
+from .travel_db import TravelDbError, travel_db
 
 logger = structlog.get_logger(__name__)
 
@@ -228,10 +230,21 @@ class VietmapClient:
         return await self.get("/reverse/v4", [("lat", lat), ("lng", lng), ("display_type", display_type)]) or []
 
     async def resolve(self, gia_tri: str) -> Diem:
-        """Quy một điểm ra toạ độ: 'lat,lng', ref_id (auto:/geocode:/vm:) hoặc tên / địa chỉ."""
+        """Quy một điểm ra toạ độ: 'lat,lng', ref_id (auto:/geocode:/vm:) hoặc tên / địa chỉ.
+        Tên / địa chỉ mà Vietmap lỗi (hết credit…) hoặc không thấy: lấy từ dữ liệu đã lưu."""
         gia_tri = gia_tri.strip()
         if m := _TOA_DO.match(gia_tri):
             return Diem(float(m.group(1)), float(m.group(2)), gia_tri)
+        if gia_tri.startswith(_TIEN_TO_REF):
+            return await self._resolve_vietmap(gia_tri)
+        try:
+            return await self._resolve_vietmap(gia_tri)
+        except VietmapError:
+            if d := await diem_tu_db(gia_tri):
+                return d
+            raise
+
+    async def _resolve_vietmap(self, gia_tri: str) -> Diem:
         ref = gia_tri
         if not gia_tri.startswith(_TIEN_TO_REF):
             ref = await self._chon_ref(gia_tri)
@@ -281,6 +294,16 @@ class VietmapClient:
         ten = ten.strip()
         if _TOA_DO.match(ten) or ten.startswith(_TIEN_TO_REF):
             return await self.resolve(ten)
+        try:
+            return await self._resolve_area_vietmap(ten)
+        except VietmapError as e:
+            # Tên trùng nhiều tỉnh (AMBIGUOUS) thì để người gọi ghi rõ; còn lại (hết credit, không
+            # thấy) thì lấy tâm điểm đến theo dữ liệu đã lưu.
+            if e.code != "AMBIGUOUS" and (d := await diem_tu_db(ten, chi_vung=True)):
+                return d
+            raise
+
+    async def _resolve_area_vietmap(self, ten: str) -> Diem:
         phan = [x.strip() for x in ten.split(",", 1)]
         goi_y_tinh = bo_dau(phan[1]) if len(phan) > 1 and phan[1] else None
 
@@ -372,6 +395,19 @@ class VietmapClient:
         )
 
     async def matrix(self, diem: list[Diem], vehicle: str, sources: list[int], destinations: list[int]) -> dict[str, Any]:
+        """Ma trận Vietmap; Vietmap lỗi (hết credit…) thì OSRM (đường ô tô thật, `_source`='osrm')."""
+        try:
+            return await self._matrix_vietmap(diem, vehicle, sources, destinations)
+        except VietmapError as e:
+            data = await osrm_table([(d.lat, d.lng) for d in diem], sources, destinations)
+            if data is None:
+                raise
+            logger.warning("matrix: Vietmap lỗi, dùng OSRM", error=str(e))
+            return {**data, "_source": "osrm"}
+
+    async def _matrix_vietmap(
+        self, diem: list[Diem], vehicle: str, sources: list[int], destinations: list[int]
+    ) -> dict[str, Any]:
         return await self.get(
             "/matrix/v4",
             [
@@ -387,6 +423,25 @@ class VietmapClient:
         if self._client is not None and not self._client.is_closed:
             await self._client.aclose()
         self._client = None
+
+
+async def diem_tu_db(ten: str, chi_vung: bool = False) -> Diem | None:
+    """Toạ độ theo dữ liệu đã lưu khi Vietmap không dùng được: địa điểm trùng tên (trừ khi
+    `chi_vung`), không có thì tâm điểm đến (trung vị toạ độ các chỗ đã cào). None nếu không có."""
+    if not (settings.pg_fallback_enabled and travel_db.enabled):
+        return None
+    try:
+        if not chi_vung:
+            p = await travel_db.find_place(ten)
+            if p and p.get("lat") is not None:
+                return Diem(float(p["lat"]), float(p["lng"]), f"{p.get('title') or ten} (dữ liệu đã lưu)")
+        khoa = await travel_db.find_destination(ten)
+        tam = (await travel_db.destinations()).get(khoa or "")
+    except TravelDbError:
+        return None
+    if not tam or tam.get("lat") is None:
+        return None
+    return Diem(float(tam["lat"]), float(tam["lng"]), f"{tam['name']} (tâm điểm đến, dữ liệu đã lưu)")
 
 
 vietmap_client = VietmapClient(

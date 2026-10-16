@@ -8,7 +8,7 @@ import structlog
 from fastmcp import FastMCP
 from pydantic import Field
 
-from ..services.travel_db import TravelDbError, travel_db
+from ..services.travel_db import TravelDbError, thuoc_diem_den, travel_db
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
 from ._db_common import NGUON_DB, diem_pho_bien, gon_le_hoi, goi_y_diem_den, loi_db, moi_nhat, nhom_dia_diem
@@ -62,7 +62,7 @@ def register_destination_snapshot_tool(mcp: FastMCP):
                 cac_diem = [
                     p
                     for p in await travel_db.places()
-                    if p["_dest"] == dest and not p.get("_ngoai_vung") and (p.get("review_count") or 0) >= 20
+                    if thuoc_diem_den(p, dest) and (p.get("review_count") or 0) >= 20
                 ]
                 cac_diem.sort(key=diem_pho_bien, reverse=True)
                 for p in cac_diem:

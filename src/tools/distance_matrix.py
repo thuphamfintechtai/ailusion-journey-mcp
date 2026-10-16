@@ -84,7 +84,13 @@ def register_distance_matrix_tool(mcp: FastMCP):
                     "vehicle": vehicle,
                     "points": [{"index": i, **gon_diem(d)} for i, d in enumerate(diem)],
                     "pairs": hang,
-                    "note": "`from` / `to` là index trong `points`. Thời gian chưa tính kẹt xe giờ cao điểm.",
+                    "source": data.get("_source"),
+                    "note": "`from` / `to` là index trong `points`. Thời gian chưa tính kẹt xe giờ cao điểm."
+                    + (
+                        " Vietmap lỗi nên tính bằng OSRM (đường ô tô, không theo `vehicle`)."
+                        if data.get("_source") == "osrm"
+                        else ""
+                    ),
                 }
             )
 

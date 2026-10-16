@@ -35,3 +35,23 @@ async def osrm_route(points: list[tuple[float, float]]) -> dict[str, Any] | None
         "duration_s": best.get("duration", 0.0),
         "polyline": best.get("geometry"),
     }
+
+
+async def osrm_table(points: list[tuple[float, float]], sources: list[int], destinations: list[int]) -> dict[str, Any] | None:
+    """Ma trận phút đi / mét giữa các điểm (lat, lng): {durations, distances} (giây, mét) cùng dạng
+    Vietmap matrix/v4, None nếu OSRM không trả được."""
+    coords = ";".join(f"{lng},{lat}" for lat, lng in points)
+    params = {
+        "sources": ";".join(map(str, sources)),
+        "destinations": ";".join(map(str, destinations)),
+        "annotations": "duration,distance",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            r = await client.get(f"{OSRM_URL}/table/v1/driving/{coords}", params=params)
+        data = r.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("code") != "Ok" or "durations" not in data:
+        return None
+    return {"durations": data.get("durations"), "distances": data.get("distances")}

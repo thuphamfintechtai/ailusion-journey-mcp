@@ -223,8 +223,45 @@ async def test_distance_matrix_nguon_dich():
 @respx.mock
 async def test_het_key_tra_ma_loi_rieng():
     respx.get(f"{BASE}/matrix/v4").mock(return_value=httpx.Response(429))
+    respx.get(url__startswith="https://router.project-osrm.org/table/").mock(return_value=httpx.Response(503))
     kq = await _goi("distance_matrix", {"origins": ["1,2", "3,4"]})
-    assert kq["error_code"] == -4
+    assert kq["error_code"] == -4  # OSRM cũng lỗi: giữ lỗi gốc của Vietmap
+
+
+@respx.mock
+async def test_distance_matrix_het_credit_vietmap_thi_dung_osrm():
+    respx.get(f"{BASE}/matrix/v4").mock(
+        return_value=httpx.Response(423, text="Your request is limited: exceeded credit.")
+    )
+    respx.get(url__startswith="https://router.project-osrm.org/table/v1/driving/").mock(
+        return_value=httpx.Response(
+            200, json={"code": "Ok", "durations": [[0, 600], [660, 0]], "distances": [[0, 5200], [5400, 0]]}
+        )
+    )
+    kq = await _goi("distance_matrix", {"origins": ["16.06,108.22", "16.05,108.24"]})
+    assert kq["status"] == "success" and kq["source"] == "osrm"
+    assert {(x["from"], x["to"], x["duration_min"], x["distance_km"]) for x in kq["pairs"]} == {
+        (0, 1, 10.0, 5.2),
+        (1, 0, 11.0, 5.4),
+    }
+
+
+@respx.mock
+async def test_resolve_ten_het_credit_vietmap_thi_lay_tu_db(monkeypatch):
+    import sys
+
+    vm = sys.modules["src.services.vietmap_client"]  # `src.services.vietmap_client` là đối tượng client
+
+    respx.get(url__startswith=f"{BASE}/autocomplete").mock(return_value=httpx.Response(423, text="exceeded credit"))
+
+    async def tu_db(ten, chi_vung=False):
+        return Diem(15.877, 108.326, f"{ten} (dữ liệu đã lưu)") if ten == "Chùa Cầu, Hội An" else None
+
+    monkeypatch.setattr(vm, "diem_tu_db", tu_db)
+    d = await vietmap_client.resolve("Chùa Cầu, Hội An")
+    assert (d.lat, d.lng) == (15.877, 108.326)
+    with pytest.raises(VietmapError):
+        await vietmap_client.resolve("Nơi không có")
 
 
 @respx.mock
