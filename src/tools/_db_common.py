@@ -7,6 +7,7 @@ File bắt đầu bằng `_` nên `auto_register` không coi đây là tool.
 
 import math
 import re
+import statistics
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -420,6 +421,20 @@ def khoang_gia_an(price_range: str | None) -> tuple[int, int | None] | None:
     lo = int(so(a) * he_so)
     # '1-100.000 ₫' nghĩa là dưới 100k: số đầu không có đơn vị riêng.
     return (0 if lo < 1_000 else lo), hi
+
+
+def phan_vi(ds: list[int]) -> dict[str, int] | None:
+    """p25 / trung vị / p75 của một dãy giá (mặt bằng giá); dưới 3 giá thì None."""
+    if len(ds) < 3:
+        return None
+    q = statistics.quantiles(ds, n=4)
+    return {"p25": int(q[0]), "median": int(statistics.median(ds)), "p75": int(q[2]), "count": len(ds)}
+
+
+def gia_moi_nguoi(p: dict[str, Any]) -> int | None:
+    """Giá mỗi người (giữa khoảng giá) của quán; chỗ ở / chưa có khoảng giá thì None."""
+    g = gia_uoc_tinh(p)
+    return g["vnd"] if g and g["kind"] == "per_person" and g["vnd"] else None
 
 
 def gia_uoc_tinh(p: dict[str, Any]) -> dict[str, Any] | None:

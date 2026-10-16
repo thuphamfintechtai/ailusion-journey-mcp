@@ -4,7 +4,6 @@ Giá là giá phòng / đêm Google Maps hiện lúc cào (một mức, không t
 để so sánh và lọc ngân sách. File bắt đầu bằng `_` nên `auto_register` không coi đây là tool.
 """
 
-import statistics
 from typing import Any
 
 from ..services.travel_db import travel_db
@@ -15,6 +14,7 @@ from ._db_common import (
     loai_cho_o,
     loc_dia_diem,
     moi_nhat,
+    phan_vi,
     rating_hieu_chinh,
     truong_sao_tin_duoc,
 )
@@ -24,13 +24,6 @@ GHI_CHU_GIA = (
     "Giá là giá phòng / đêm Google Maps hiện lúc cào (`data_as_of`), không theo ngày nhận phòng "
     "hay số người; dùng để so sánh / lọc ngân sách, giá thật cần kiểm tra khi đặt (search_hotels)."
 )
-
-
-def _phan_vi(ds: list[int]) -> dict[str, int] | None:
-    if len(ds) < 3:
-        return None
-    q = statistics.quantiles(ds, n=4)
-    return {"p25": int(q[0]), "median": int(statistics.median(ds)), "p75": int(q[2]), "count": len(ds)}
 
 
 async def tim_cho_o(
@@ -68,7 +61,7 @@ async def tim_cho_o(
 
     # Mặt bằng giá của khu vực / loại đã chọn, tính TRƯỚC khi lọc ngân sách để biết ngân sách
     # đặt ra là thấp hay cao so với thị trường.
-    thong_ke = _phan_vi([g for p in ung_vien if (g := gia_phong(p))])
+    thong_ke = phan_vi([g for p in ung_vien if (g := gia_phong(p))])
 
     if min_price is not None or max_price is not None:
         ung_vien = [

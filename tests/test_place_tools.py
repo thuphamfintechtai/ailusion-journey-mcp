@@ -8,6 +8,7 @@ luật), còn bản thân câu SQL được kiểm tra riêng ở test_dieu_kien
 import asyncio
 import json
 import re
+import sys
 from datetime import date, timedelta
 
 import httpx
@@ -287,6 +288,21 @@ async def test_find_places_needs(db):
     kq = await _goi("find_places", {"destination": "Huế", "needs": ["vegetarian", "romantic"]})
     assert [p["name"] for p in kq["places"]] == ["Nhà hàng Chay Liên Hoa"]
     assert kq["places"][0]["heads_up"] == ["Bắt buộc đặt chỗ trước"]
+
+
+async def test_find_places_mat_bang_gia_tinh_tren_moi_quan_khop(db, monkeypatch):
+    # Mặt bằng giá tính trên mọi quán khớp, không chỉ chỗ trả về (`limit`) hay chỗ qua lọc giá.
+    them = _p("q3", "Nhà hàng Ancient", "Nhà hàng", 16.4630, 107.5930, price_range="200-300 N ₫")
+    monkeypatch.setattr(sys.modules[__name__], "DS", [*DS, them])
+    kq = await _goi("find_places", {"destination": "Huế", "category": "Nhà hàng", "limit": 1})
+    assert len(kq["places"]) == 1
+    assert kq["price_stats_vnd"] == {"p25": 50000, "median": 150000, "p75": 250000, "count": 3}
+    kq = await _goi("find_places", {"destination": "Huế", "category": "Nhà hàng", "max_price_vnd": 100000})
+    assert "Nhà hàng Ancient" not in {p["name"] for p in kq["places"]}
+    assert kq["price_stats_vnd"]["median"] == 150000
+    # Dưới 3 quán có giá: chưa đủ để nói mặt bằng.
+    kq = await _goi("find_places", {"destination": "Huế", "category": "Nhà hàng chay"})
+    assert "price_stats_vnd" not in kq
 
 
 async def test_find_places_needs_khong_chac_chan_loai_no(db):

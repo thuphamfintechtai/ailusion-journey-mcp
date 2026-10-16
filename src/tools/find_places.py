@@ -9,7 +9,17 @@ from pydantic import Field
 from ..services.travel_db import TravelDbError, travel_db
 from ..utils.error_handler import format_mcp_tool_error_response, format_validation_error
 from ..utils.response_utils import drop_empty
-from ._db_common import NGUON_DB, chon_diem_den, gon_dia_diem, goi_y_diem_den, loc_dia_diem, loi_db, moi_nhat
+from ._db_common import (
+    NGUON_DB,
+    chon_diem_den,
+    gia_moi_nguoi,
+    gon_dia_diem,
+    goi_y_diem_den,
+    loc_dia_diem,
+    loi_db,
+    moi_nhat,
+    phan_vi,
+)
 from ._nhu_cau import NHU_CAU, NhuCau, bieu_thuc_so_yes, dieu_kien_sql, luu_y, them_nhan_nhu_cau, trang_thai_nhu_cau
 from ._serpapi_common import nhan_lua_chon
 
@@ -24,8 +34,10 @@ def register_find_places_tool(mcp: FastMCP):
             "Tìm POI trong PostgreSQL theo điểm đến hoặc tọa độ, từ khóa, loại, giá, rating, "
             "số review, bán kính và xe lăn. Có `needs` thì lọc thêm các nhu cầu như ăn chay, "
             "đỗ xe, trẻ em, Wi-Fi; mỗi nơi trả `needs_status` và `heads_up`. Không có `needs` "
-            "thì chỉ đọc dữ liệu địa điểm, không truy vấn thuộc tính chi tiết. Giá và thuộc tính "
-            "là dữ liệu đã lưu, xem `data_as_of`; không tốn quota API."
+            "thì chỉ đọc dữ liệu địa điểm, không truy vấn thuộc tính chi tiết. Kèm `price_stats_vnd` "
+            "(p25 / trung vị / p75 giá mỗi người của mọi quán khớp, trước khi lọc giá và cắt `limit`) "
+            "để biết mặt bằng giá ăn uống của khu vực. Giá và thuộc tính là dữ liệu đã lưu, xem "
+            "`data_as_of`; không tốn quota API."
         ),
         tags={"journey", "db", "maps", "preferences"},
         meta={"version": "1.0.0", "author": "Ailusion team", "data_source": "postgres:gmaps_place"},
@@ -78,15 +90,22 @@ def register_find_places_tool(mcp: FastMCP):
                     "note": "Chưa có dữ liệu địa điểm đã lưu cho điểm đến này.",
                 })
 
-            candidates, query_complete = loc_dia_diem(
-                await travel_db.places(),
+            all_places = await travel_db.places()
+            filters = dict(
                 query=query, destination_key=destination_key,
                 lat=lat, lng=lng, radius_km=radius_km if lat is not None else None,
                 category=category, min_rating=min_rating, min_reviews=min_reviews,
                 wheelchair=wheelchair, sort_by=sort_by,
+            )
+            candidates, query_complete = loc_dia_diem(
+                all_places, **filters,
                 min_price_vnd=min_price_vnd, max_price_vnd=max_price_vnd,
                 strict_price=strict_price,
             )
+            # Mặt bằng giá mỗi người của khu vực / loại đã chọn (như find_stays): mọi chỗ khớp, tính
+            # TRƯỚC khi lọc giá, nhu cầu và cắt `limit` (30 chỗ phổ biến nhất toàn quán đắt).
+            priced = candidates if min_price_vnd is None and max_price_vnd is None else loc_dia_diem(all_places, **filters)[0]
+            price_stats = phan_vi([g for place in priced if (g := gia_moi_nguoi(place))])
             needs_unique = list(dict.fromkeys(needs or []))
             checked_count = len(candidates)
             matched_scores: dict[str, int] = {}
@@ -134,7 +153,7 @@ def register_find_places_tool(mcp: FastMCP):
                 "status": "success", "destination": destination,
                 "needs": {need: NHU_CAU[need]["nhan"] for need in needs_unique} if needs_unique else None,
                 "candidates_checked": checked_count if needs_unique else None,
-                "total_found": len(candidates), "places": places,
+                "total_found": len(candidates), "places": places, "price_stats_vnd": price_stats,
                 "note": " ".join(notes) or None,
                 "data_source": NGUON_DB, "data_as_of": moi_nhat(candidates),
             })
