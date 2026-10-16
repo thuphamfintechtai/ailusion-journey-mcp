@@ -16,7 +16,7 @@ import structlog
 
 from ..config.settings import settings
 from ..services.rating_prior import sao_tin_duoc
-from ..services.travel_db import TravelDbError, khoang_cach_km, travel_db
+from ..services.travel_db import TravelDbError, khoang_cach_km, thuoc_diem_den, travel_db
 from ..utils.error_handler import format_mcp_tool_error_response
 from ..utils.response_utils import drop_empty
 from ..utils.text import bo_dau, co_dau, go_co_dau, khop_tu, tach_tu, van_ban_de_khop
@@ -173,7 +173,7 @@ def loc_dia_diem(
     loai = tach_tu(category)
     ung_vien = []
     for p in ds:
-        if destination_key and lat is None and (p["_dest"] != destination_key or p.get("_ngoai_vung")):
+        if destination_key and lat is None and not thuoc_diem_den(p, destination_key):
             continue
         if min_rating is not None and (p.get("rating") or 0) < min_rating:
             continue

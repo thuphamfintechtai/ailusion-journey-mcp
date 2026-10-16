@@ -56,6 +56,10 @@ DS = [
     _p("k4", "Mộc Homestay", "Lưu trú nhà dân", 16.4670, 107.5970, 4.9, 300, summary="350.000\xa0₫"),
     _p("o1", "Ốc Phân Cực", "Nhà hàng hải sản", 16.4620, 107.5920, 4.2, 2400,
        reviews_per_rating={"1": 418, "2": 37, "3": 44, "4": 54, "5": 1863}),
+    # Hội An cào chung với Đà Nẵng (destination 'danang'), nhận ra qua địa chỉ.
+    _p("h1", "Chùa Cầu", "Điểm mốc lịch sử", 15.8770, 108.3260, 4.3, 29000, destination="danang",
+       address="Nguyễn Thị Minh Khai, Minh An, Hội An, Quảng Nam"),
+    _p("d1", "Cầu Rồng", "Cầu", 16.0610, 108.2270, 4.6, 30000, destination="danang", address="Hải Châu, Đà Nẵng"),
 ]
 CHI_TIET = {
     "c1": {"open_hours": GIO, "popular_times": DONG, "attributes": {KXL: ["Lối vào cho xe lăn"], "Thanh toán": ["Phí vào cổng"]},
@@ -551,4 +555,26 @@ async def test_plan_day_route_place_id_khi_tat_db():
 
 async def test_plan_day_route_ngay_sai():
     kq = await _goi("plan_day_route", {"start": "1,2", "date": "10/10/2026", "stops": [{"place": "3,4"}]})
+    assert kq["status"] == "error"
+
+
+async def test_find_places_noi_nho_trong_tinh(db):
+    """Hội An không có khoá riêng trong DB (cào chung 'danang'): lấy chỗ có Hội An trong địa chỉ."""
+    kq = await _goi("find_places", {"destination": "Hội An", "limit": 10})
+    assert [p["name"] for p in kq["places"]] == ["Chùa Cầu"]
+    kq = await _goi("find_places", {"destination": "Đà Nẵng", "limit": 10})
+    assert {p["name"] for p in kq["places"]} == {"Chùa Cầu", "Cầu Rồng"}
+
+
+async def test_geocode_vn_het_credit_vietmap_thi_lay_tam_diem_den(db, monkeypatch):
+    from src.services.vietmap_client import VietmapError
+
+    async def het_credit(*a, **k):
+        raise VietmapError("Vietmap từ chối tham số (HTTP 423): exceeded credit.")
+
+    monkeypatch.setattr(vietmap_client, "search", het_credit)
+    kq = await _goi("geocode_vn", {"address": "Hội An"})
+    assert kq["status"] == "success" and kq["source"] == "ailusion_db"
+    assert kq["results"][0]["lat"] == pytest.approx(15.877)
+    kq = await _goi("geocode_vn", {"address": "Nơi không có trong dữ liệu"})
     assert kq["status"] == "error"
