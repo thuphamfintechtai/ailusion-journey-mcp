@@ -213,8 +213,11 @@ def test_nhom_dia_diem_theo_tien_to(loai, ra):
 
 
 def test_rating_hieu_chinh_va_ty_le_sao():
-    assert rating_hieu_chinh(5.0, 3) < rating_hieu_chinh(4.7, 3000)
-    assert rating_hieu_chinh(0, 0) is None
+    def cho(sao, n):
+        return {"rating": sao, "review_count": n, "category": "Quán cà phê", "_dest": "dalat"}
+
+    assert rating_hieu_chinh(cho(5.0, 3)) < rating_hieu_chinh(cho(4.7, 3000))
+    assert rating_hieu_chinh(cho(0, 0)) is None
     assert ty_le_sao({"1": 1, "5": 3}) == {"1": 0.25, "2": 0.0, "3": 0.0, "4": 0.0, "5": 0.75}
     assert ty_le_sao({"1": 0}) is None
 
@@ -439,7 +442,12 @@ async def test_find_places_tra_gia_vnd_va_rating_hieu_chinh(db):
     chay = kq["places"][0]
     assert chay["price"] == "100-200 N ₫"
     assert chay["price_vnd"] == {"kind": "per_person", "min_vnd": 100000, "max_vnd": 200000, "vnd": 150000}
-    assert chay["rating_adjusted"] == rating_hieu_chinh(4.6, 700)
+    # Bayes: nằm giữa sao tiên nghiệm và sao thật, nghiêng về sao thật vì 700 review.
+    basis = chay["rating_basis"]
+    assert basis["method"] == "bayes"
+    lo, hi = sorted((basis["prior_mean"], 4.6))
+    assert lo <= chay["rating_adjusted"] <= hi
+    assert abs(chay["rating_adjusted"] - 4.6) < abs(basis["prior_mean"] - 4.6)
 
 
 async def test_find_places_needs_loc_gia(db):

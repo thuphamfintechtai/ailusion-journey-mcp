@@ -16,7 +16,7 @@ from ._db_common import (
     gia_uoc_tinh,
     loi_db,
     muc_dong_luc,
-    rating_hieu_chinh,
+    truong_sao_tin_duoc,
     trang_thai_mo_cua,
     ty_le_sao,
 )
@@ -108,7 +108,7 @@ def register_compare_places_tool(mcp: FastMCP):
                         "category": p.get("category"),
                         "rating": p.get("rating") or None,
                         "reviews": p.get("review_count"),
-                        "rating_adjusted": rating_hieu_chinh(p.get("rating"), p.get("review_count")),
+                        **truong_sao_tin_duoc(p),
                         "one_star_pct": round(sao["1"] * 100, 1) if sao else None,
                         "price": gia,
                         "open_status": mo.get("status") if mo else None,

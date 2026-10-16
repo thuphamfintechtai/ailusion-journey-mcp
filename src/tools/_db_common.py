@@ -15,6 +15,7 @@ from typing import Any
 import structlog
 
 from ..config.settings import settings
+from ..services.rating_prior import sao_tin_duoc
 from ..services.travel_db import TravelDbError, khoang_cach_km, travel_db
 from ..utils.error_handler import format_mcp_tool_error_response
 from ..utils.response_utils import drop_empty
@@ -138,7 +139,13 @@ def khop_du_tu_khoa(toks: list[str], van_ban: str | None) -> bool:
 
 
 def diem_pho_bien(p: dict[str, Any]) -> float:
-    """Rating có trọng số theo số review, để 4.9 sao / 3 review không vượt 4.6 sao / 5.000 review."""
+    """Điểm sắp "popular" = sao × log10(số review + 10) — công thức TỰ ĐẶT, để 4.9 sao / 3 review
+    không vượt 4.6 sao / 5.000 review và chỗ nổi tiếng được ưu tiên.
+
+    Chưa đổi sang sao Bayes: so top 30 ở Đà Nẵng / Huế / Hà Nội (10/2026), Bayes chỉ trùng 1–5/30
+    chỗ với cách này — số review ảo thật chỉ ~9–20 nên Bayes đo chất lượng, không đo độ nổi tiếng;
+    trộn mọi loại hình thì spa / chỗ 5★ không phải du lịch chiếm hết, Bà Nà, Kinh thành Huế, Văn
+    Miếu rơi khỏi danh sách. Bayes dùng cho sắp theo `rating_adjusted`, chỗ ở và bước chấm (LLM)."""
     return (p.get("rating") or 0) * math.log10((p.get("review_count") or 0) + 10)
 
 
@@ -220,7 +227,7 @@ def gon_dia_diem(p: dict[str, Any]) -> dict[str, Any]:
         "place_id": p.get("place_id"),
         "category": p.get("category"),
         "rating": p.get("rating") or None,  # 0 sao + 0 review = chưa có đánh giá
-        "rating_adjusted": rating_hieu_chinh(p.get("rating"), p.get("review_count")),
+        **truong_sao_tin_duoc(p),
         "reviews": p.get("review_count"),
         "price": p.get("price_range"),
         "price_vnd": gia_uoc_tinh(p),
@@ -442,17 +449,28 @@ def trong_khoang_gia(
     return not (toi_thieu is not None and gia["vnd"] < toi_thieu)
 
 
-# Rating trung bình toàn bộ dữ liệu, dùng làm "giá trị tiên nghiệm" cho rating hiệu chỉnh.
-RATING_TIEN_NGHIEM = 4.3
-SO_REVIEW_TIEN_NGHIEM = 30
+def _diem_den_cua(p: dict[str, Any]) -> str | None:
+    return p.get("_dest") or p.get("destination")
 
 
-def rating_hieu_chinh(rating: float | None, so_review: int | None) -> float | None:
-    """Rating Bayes: kéo rating về 4.3 khi ít review, để 5.0 / 3 review không vượt 4.7 / 3.000 review."""
-    if not rating or not so_review:
-        return None
-    c, m = SO_REVIEW_TIEN_NGHIEM, RATING_TIEN_NGHIEM
-    return round((c * m + rating * so_review) / (c + so_review), 2)
+def danh_gia_tin_duoc(p: dict[str, Any]) -> dict[str, Any] | None:
+    """Sao tin được của 1 dòng địa điểm (Bayes theo tiên nghiệm của điểm đến × loại hình, thiếu
+    tiên nghiệm thì Hoeffding) — xem src/services/rating_prior.py."""
+    return sao_tin_duoc(p.get("rating"), p.get("review_count"), _diem_den_cua(p), p.get("category"))
+
+
+def rating_hieu_chinh(p: dict[str, Any]) -> float | None:
+    """Số sao tin được của 1 dòng địa điểm (chỉ con số), để 5.0 / 3 review không vượt 4.7 / 3.000."""
+    d = danh_gia_tin_duoc(p)
+    return d["value"] if d else None
+
+
+def truong_sao_tin_duoc(p: dict[str, Any]) -> dict[str, Any]:
+    """Trường gắn vào kết quả tool: `rating_adjusted` (số) + `rating_basis` (cách tính)."""
+    d = danh_gia_tin_duoc(p)
+    if not d:
+        return {"rating_adjusted": None}
+    return {"rating_adjusted": d["value"], "rating_basis": {k: v for k, v in d.items() if k != "value"}}
 
 
 def ty_le_sao(reviews_per_rating: dict[str, Any] | None) -> dict[str, float] | None:
