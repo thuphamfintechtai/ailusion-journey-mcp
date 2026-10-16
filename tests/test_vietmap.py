@@ -298,3 +298,32 @@ async def test_get_route_het_credit_vietmap_thi_dung_osrm():
     assert kq["distance_km"] == 22.9 and kq["duration_min"] == 45.0
     assert kq["path"] == "_p~iF~ps|U" and kq["path_precision"] == 5
     assert "108.4583,11.9404;108.4419,12.0459" in str(osrm.calls.last.request.url)  # lng,lat
+
+
+async def test_tu_db_ten_diem_den_lay_tam_diem_den_khong_lay_quan(monkeypatch):
+    # Vietmap lỗi, tra "Đà Lạt": phải ra tâm điểm đến, không ra quán có chữ "Đà Lạt" ở TP.HCM
+    # (từng làm cả chuyến Đà Lạt lấy chỗ ở Sài Gòn). Tên quán thì vẫn tra theo tên.
+    import sys
+
+    vm = sys.modules["src.services.vietmap_client"]
+    db = vm.travel_db
+
+    async def find_destination(text):
+        return "dalat" if text and "Lạt" in text else None
+
+    async def find_place(ten, destination=None):
+        return {"title": "Bánh căn Đà Lạt", "lat": 10.7568, "lng": 106.6759}
+
+    async def destinations():
+        return {"dalat": {"name": "Đà Lạt", "lat": 11.94, "lng": 108.44}}
+
+    monkeypatch.setattr(db, "find_destination", find_destination)
+    monkeypatch.setattr(db, "find_place", find_place)
+    monkeypatch.setattr(db, "destinations", destinations)
+    monkeypatch.setattr(type(db), "enabled", property(lambda self: True))
+    monkeypatch.setattr(vm.settings, "pg_fallback_enabled", True)
+    for ten in ("Đà Lạt", "Thành phố Đà Lạt"):
+        d = await vm.diem_tu_db(ten)
+        assert (d.lat, d.lng) == (11.94, 108.44), ten
+    d = await vm.diem_tu_db("Bánh căn Đà Lạt")
+    assert (d.lat, d.lng) == (10.7568, 106.6759)
