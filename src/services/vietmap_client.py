@@ -25,7 +25,7 @@ import structlog
 from ..config.settings import settings
 from ..utils.text import bo_dau
 from .osrm_client import osrm_table
-from .travel_db import TravelDbError, travel_db
+from .travel_db import TravelDbError, bo_dia_danh, travel_db
 
 logger = structlog.get_logger(__name__)
 
@@ -427,15 +427,18 @@ class VietmapClient:
 
 async def diem_tu_db(ten: str, chi_vung: bool = False) -> Diem | None:
     """Toạ độ theo dữ liệu đã lưu khi Vietmap không dùng được: địa điểm trùng tên (trừ khi
-    `chi_vung`), không có thì tâm điểm đến (trung vị toạ độ các chỗ đã cào). None nếu không có."""
+    `chi_vung`), không có thì tâm điểm đến (trung vị toạ độ các chỗ đã cào). Câu tra CHỈ là tên
+    điểm đến ('Đà Lạt', 'Thành phố Huế') thì lấy tâm điểm đến luôn: tra theo tên địa điểm từng khớp
+    quán có chữ 'Đà Lạt' trong tên ở TP.HCM, cả chuyến Đà Lạt ra chỗ ở Sài Gòn. None nếu không có."""
     if not (settings.pg_fallback_enabled and travel_db.enabled):
         return None
     try:
-        if not chi_vung:
+        khoa = await travel_db.find_destination(ten)
+        chi_noi = khoa is not None and not bo_dia_danh(ten, khoa).strip()
+        if not chi_vung and not chi_noi:
             p = await travel_db.find_place(ten)
             if p and p.get("lat") is not None:
                 return Diem(float(p["lat"]), float(p["lng"]), f"{p.get('title') or ten} (dữ liệu đã lưu)")
-        khoa = await travel_db.find_destination(ten)
         tam = (await travel_db.destinations()).get(khoa or "")
     except TravelDbError:
         return None
